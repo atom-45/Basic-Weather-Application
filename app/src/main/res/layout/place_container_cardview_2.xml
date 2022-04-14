@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/placeCardView2"
+    android:layout_width="match_parent"
+    android:layout_height="200dp"
+    app:cardCornerRadius="5dp"
+    app:cardElevation="10dp"
+    android:padding="2dp"
+    android:layout_margin="20dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/locationIconImageView2"
+            android:layout_width="33dp"
+            android:layout_height="33dp"
+            android:layout_marginTop="35dp"
+            android:padding="6dp"
+            android:src="@drawable/placeholder"
+            app:layout_constraintEnd_toStartOf="@+id/placeNameValue"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/placeNameValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:layout_marginEnd="104dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:hint="@string/location"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeRegion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_marginStart="32dp"
+            android:layout_marginBottom="88dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="12sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:padding="2dp"
+            android:text="@string/region"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeRegionValue"
+            android:layout_width="105dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="12sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/placeRegion"
+            app:layout_constraintTop_toBottomOf="@+id/placeNameValue"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeCountry"
+            android:layout_width="wrap_content"
+            android:layout_height="35dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="28dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:padding="1dp"
+            android:text="@string/country"
+            android:textColor="@color/black"
+            android:gravity="center"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/placeRegion"
+            app:layout_constraintTop_toBottomOf="@+id/placeRegion"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeCountryValue"
+            android:layout_width="102dp"
+            android:layout_height="35dp"
+            android:layout_marginTop="18dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="11sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="4dp"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="@+id/placeCountry"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/placeCountry"
+            app:layout_constraintTop_toBottomOf="@+id/placeRegionValue"
+            app:layout_constraintVertical_bias="1.0"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeLatitude"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="32dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:padding="2dp"
+            android:text="@string/latitude"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/placeRegionValue"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeLatitudeValue"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="3dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="@+id/placeLatitude"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/placeLatitude"
+            app:layout_constraintTop_toTopOf="@+id/placeLatitude"
+            app:layout_constraintVertical_bias="1.0"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeLongitude"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="88dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:padding="2dp"
+            android:text="@string/longitude"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/placeLatitude"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/placeLongitudeValue"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="2dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:textColor="@color/black"
+            android:gravity="center"
+            app:layout_constraintBottom_toBottomOf="@+id/placeLongitude"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/placeLongitude"
+            tools:targetApi="o" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

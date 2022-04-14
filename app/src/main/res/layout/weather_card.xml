@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="5dp"
+    app:cardBackgroundColor="@color/rustic_orange"
+    android:padding="2dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="5dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/location_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="40dp"
+            android:padding="5dp"
+            android:src="@drawable/placeholder"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/city_name"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/city_name"
+            android:layout_width="150dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="32dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:hint="@string/location"
+            android:padding="6dp"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toEndOf="@+id/location_icon"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/current_date"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:layout_marginTop="5dp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:padding="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.798"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/city_name"
+            tools:targetApi="o" />
+
+        <ImageView
+            android:id="@+id/weather_icon"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginTop="100dp"
+            app:layout_constraintEnd_toStartOf="@+id/temperature_value"
+            app:layout_constraintHorizontal_bias="0.174"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/weather_text"
+            android:layout_width="100dp"
+            android:layout_height="40dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="12sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:hint="@string/partly_cloudy"
+            android:padding="4dp"
+            app:layout_constraintEnd_toEndOf="@+id/weather_icon"
+            app:layout_constraintStart_toStartOf="@+id/weather_icon"
+            app:layout_constraintTop_toBottomOf="@+id/weather_icon"
+            tools:targetApi="o" />
+
+
+        <TextView
+            android:id="@+id/temperature_value"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginEnd="60dp"
+            android:autoSizeMaxTextSize="50sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:padding="10dp"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/temperature_text"
+            tools:ignore="ContentDescription"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/temperature_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:padding="4dp"
+            android:text="@string/temperature_celsius"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="@+id/temperature_value"
+            app:layout_constraintHorizontal_bias="0.38"
+            app:layout_constraintStart_toStartOf="@+id/temperature_value"
+            app:layout_constraintTop_toTopOf="@+id/weather_icon"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/sunrise_text"
+            android:layout_width="75dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="56dp"
+            android:layout_marginTop="20dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="4dp"
+            android:text="@string/sunrise"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toStartOf="@+id/sunrise_value"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/weather_text"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/sunset_text"
+            android:layout_width="75dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="4dp"
+            android:text="@string/sunset"
+            android:textColor="@color/black"
+            app:layout_constraintStart_toStartOf="@+id/sunrise_text"
+            app:layout_constraintTop_toBottomOf="@+id/sunrise_text"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/rain_prop_text"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="4dp"
+            android:text="@string/rain_probability"
+            android:textColor="@color/black"
+            app:layout_constraintStart_toStartOf="@+id/sunset_text"
+            app:layout_constraintTop_toBottomOf="@+id/sunset_text"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/humidity_text"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="72dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="4dp"
+            android:text="@string/humidity"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/rain_prop_text"
+            app:layout_constraintTop_toBottomOf="@+id/rain_prop_text"
+            app:layout_constraintVertical_bias="0.0"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/humidity_value"
+            android:layout_width="90dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="0dp"
+            android:layout_marginBottom="72dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:padding="4dp"
+            android:textColor="@color/black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="@+id/rain_probability"
+            app:layout_constraintTop_toBottomOf="@+id/rain_probability"
+            app:layout_constraintVertical_bias="0.007"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/rain_probability"
+            android:layout_width="90dp"
+            android:layout_height="30dp"
+            android:layout_marginTop="0dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:padding="6dp"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="@+id/sunset_value"
+            app:layout_constraintTop_toBottomOf="@+id/sunset_value"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/sunset_value"
+            android:layout_width="90dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="14sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="2dp"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="@+id/sunrise_value"
+            app:layout_constraintTop_toBottomOf="@+id/sunrise_value"
+            tools:targetApi="o" />
+
+        <TextView
+            android:id="@+id/sunrise_value"
+            android:layout_width="90dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="68dp"
+            android:autoSizeMaxTextSize="20sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="start"
+            android:padding="2dp"
+            android:textColor="@color/black"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/temperature_value"
+            tools:targetApi="o" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

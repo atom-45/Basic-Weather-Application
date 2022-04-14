@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Basic Weather App</string>
+    <string name="current_date">2022–03–22</string>
+    <string name="location">Johannesburg</string>
+    <string name="partly_cloudy">partly cloudy</string>
+    <string name="temperature_value">22</string>
+    <string name="temperature_celsius">Temperature (\u2103)</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
+    <string name="rain_probability">Rain probability (%)</string>
+    <string name="humidity">Humidity (%)</string>
+    <string name="sunrise_time_example">06:35 AM</string>
+    <string name="sunset_time_example">07:45 PM</string>
+    <string name="rain_probability_example">80%</string>
+    <string name="humidity_example">49%</string>
+    <string name="latitude">Latitude :</string>
+    <string name="longitude">Longitude :</string>
+    <string name="country">Country :</string>
+    <string name="region">Region :</string>
+    <string name="name">Name :</string>
+    <string name="search_location_example">City name 1, City name 2</string>
+    <string name="days">days :</string>
+    <string name="forecast">Forecast (3 days only)</string>
+    <string name="current">Current weather</string>
+    <string name="search_places">search places</string>
+    <string name="nearby_places">Nearby places (1 or 2 cities)</string>
+    <string name="hint_sample">3</string>
+    <string name="header_text">Nearby places found at %1$s and %2$s </string>
+    <string name="header_text_2">Nearby places found at %1$s</string>
+    <string name="current_forecast">Current and Forecast</string>
+    <string name="weatherapi_com">By WeatherAPI.com</string>
+</resources>
