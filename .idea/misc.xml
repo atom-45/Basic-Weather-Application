@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="app/src/main/res/drawable/ic_background.xml" value="0.164" />
+        <entry key="app/src/main/res/drawable/ic_baseline_location_on_24.xml" value="0.1" />
+        <entry key="app/src/main/res/drawable/ic_baseline_search_24.xml" value="0.164" />
+        <entry key="app/src/main/res/drawable/ic_main_background.xml" value="0.1" />
+        <entry key="app/src/main/res/drawable/ic_search_background.xml" value="0.164" />
+        <entry key="app/src/main/res/layout-v26/place_container_cardview.xml" value="0.17135416666666667" />
+        <entry key="app/src/main/res/layout-v26/weather_detail_cardview.xml" value="0.33" />
+        <entry key="app/src/main/res/layout-v26/weather_detail_cardview_2.xml" value="0.18" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/activity_search_results.xml" value="0.22" />
+        <entry key="app/src/main/res/layout/activity_splash.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/place_container_cardview.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/place_container_cardview_2.xml" value="0.22" />
+        <entry key="app/src/main/res/layout/test_container.xml" value="0.18" />
+        <entry key="app/src/main/res/layout/weather_card.xml" value="0.2" />
+        <entry key="app/src/main/res/layout/weather_cardview.xml" value="0.17135416666666667" />
+        <entry key="app/src/main/res/layout/weather_detail_cardview.xml" value="0.33" />
+        <entry key="app/src/main/res/layout/weather_detail_cardview_2.xml" value="0.1" />
+        <entry key="app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.151" />
+        <entry key="app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" value="0.151" />
+        <entry key="app/src/main/res/mipmap-anydpi-v26/ic_weather_launcher.xml" value="0.151" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+  <component name="VisualizationToolProject">
+    <option name="state">
+      <ProjectState>
+        <option name="scale" value="0.16" />
+      </ProjectState>
+    </option>
+  </component>
+</project>
