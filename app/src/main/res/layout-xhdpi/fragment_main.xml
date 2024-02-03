@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+    </data>
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="vertical"
+        android:scrollIndicators="end"
+        android:background="@drawable/app_background">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:context=".fragments.MainFragment">
+
+            <TextView
+                android:id="@+id/mainFragmentLocationName_textView"
+                android:layout_width="323dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="3dp"
+                android:autoSizeMaxTextSize="18sp"
+                android:autoSizeMinTextSize="14sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:gravity="center"
+                android:padding="4dp"
+                android:textColor="@color/black"
+                android:fontFamily="@font/muli"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toEndOf="@+id/mainFragmentLocationIcon_imageView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentSettings_imageView" />
+
+            <ImageView
+                android:id="@+id/mainFragmentLocationIcon_imageView"
+                android:layout_width="40dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="16dp"
+                android:padding="5dp"
+                android:src="@drawable/outline_location_searching_24"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/mainFragmentLocationName_textView"
+                tools:ignore="ContentDescription" />
+
+            <ImageView
+                android:id="@+id/mainFragmentSettings_imageView"
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="10dp"
+                android:padding="8dp"
+                android:src="@drawable/outline_settings_24"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="1.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/mainFragmentIntroduction_textView"
+                android:layout_width="match_parent"
+                android:layout_height="140dp"
+                android:autoSizeMaxTextSize="30sp"
+                android:autoSizeMinTextSize="25sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:textFontWeight="500"
+                android:textColor="@color/black"
+                android:gravity="start|center"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentLocationName_textView"
+                tools:targetApi="p" />
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentDateAndTime_textView"
+                android:layout_width="185dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="14dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:padding="3dp"
+                android:gravity="center"
+                android:textColor="@color/black"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentIntroduction_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentWeatherTemp_textView"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:layout_marginStart="1dp"
+                android:autoSizeMaxTextSize="22sp"
+                android:autoSizeMinTextSize="18sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="1dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentCurrentDateAndTime_textView"
+                app:layout_constraintStart_toEndOf="@+id/mainFragmentCurrentWeatherIcon_imageView"
+                app:layout_constraintTop_toTopOf="@+id/mainFragmentCurrentWeatherIcon_imageView" />
+
+            <ImageView
+                android:id="@+id/mainFragmentCurrentWeatherIcon_imageView"
+                android:layout_width="85dp"
+                android:layout_height="100dp"
+                android:layout_marginTop="0dp"
+                android:scaleType="fitCenter"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCurrentDateAndTime_textView"
+                tools:ignore="ContentDescription" />
+
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentWeatherDescription_textView"
+                android:layout_width="160dp"
+                android:layout_height="25dp"
+                android:layout_marginStart="50dp"
+                android:layout_marginTop="1dp"
+                android:layout_marginEnd="4dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="2dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/mainFragmentCurrentDateAndTime_textView"
+                app:layout_constraintTop_toTopOf="@+id/mainFragmentCurrentDateAndTime_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentWeatherFeelsLike_textView"
+                android:layout_width="160dp"
+                android:layout_height="25dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="2dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentCurrentWeatherDescription_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentCurrentWeatherDescription_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCurrentWeatherDescription_textView" />
+
+
+            <TextView
+                android:id="@+id/mainFragmentCWWindSpeedAndDirection_textView"
+                android:layout_width="160dp"
+                android:layout_height="25dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="2dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentCurrentWeatherFeelsLike_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentCurrentWeatherFeelsLike_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCurrentWeatherFeelsLike_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentWeatherHumidity_textView"
+                android:layout_width="160dp"
+                android:layout_height="25dp"
+                android:layout_marginStart="8dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="2dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentCWWindSpeedAndDirection_textView"
+                app:layout_constraintHorizontal_bias="1.0"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentCWWindSpeedAndDirection_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCWWindSpeedAndDirection_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentCurrentWeatherRainProbability_textView"
+                android:layout_width="160dp"
+                android:layout_height="30dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="2dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentCurrentWeatherHumidity_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentCurrentWeatherHumidity_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCurrentWeatherHumidity_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentMoonShapePhase_textView"
+                android:layout_width="200dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="40dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="13sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentCurrentWeatherTemp_textView" />
+
+            <ImageView
+                android:id="@+id/mainFragmentMoonShape_imageView"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:scaleType="fitCenter"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentMoonShapePhase_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentMoonShapePhase_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentMoonShapePhase_textView"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/mainFragmentSunrise_textView"
+                android:layout_width="160dp"
+                android:layout_height="30dp"
+                android:layout_marginStart="40dp"
+                android:layout_marginTop="0dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="12sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="5dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toEndOf="@+id/mainFragmentMoonShapePhase_textView"
+                app:layout_constraintTop_toTopOf="@+id/mainFragmentMoonShapePhase_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentSunset_textView"
+                android:layout_width="160dp"
+                android:layout_height="30dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="12sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="5dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentSunrise_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentSunrise_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentSunrise_textView" />
+
+
+            <TextView
+                android:id="@+id/mainFragmentMoonrise_textView"
+                android:layout_width="160dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="0dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="12sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="5dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentSunset_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentSunset_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentSunset_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentMoonset_textView"
+                android:layout_width="160dp"
+                android:layout_height="30dp"
+                android:layout_marginTop="0dp"
+                android:autoSizeMaxTextSize="16sp"
+                android:autoSizeMinTextSize="12sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:padding="5dp"
+                android:textColor="@color/black"
+                app:layout_constraintEnd_toEndOf="@+id/mainFragmentMoonrise_textView"
+                app:layout_constraintStart_toStartOf="@+id/mainFragmentMoonrise_textView"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentMoonrise_textView" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/mainFragmentHourlyWeather_recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="2dp"
+                android:orientation="horizontal"
+                android:padding="5dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentHourlyForecast_textView" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/mainFragmentDailyForecastWeather_recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="0dp"
+                android:orientation="horizontal"
+                android:padding="5dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentForecastDay_textView" />
+
+            <TextView
+                android:id="@+id/mainFragmentWeatherUrl_textView"
+                android:layout_width="match_parent"
+                android:layout_height="25dp"
+                android:layout_marginTop="40dp"
+                android:layout_marginBottom="100dp"
+                android:fontFamily="@font/muli"
+                android:gravity="center"
+                android:text="@string/weatherapi_com"
+                android:textColor="@color/black"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentDailyForecastWeather_recyclerView"
+                app:layout_constraintVertical_bias="0.0" />
+
+
+            <TextView
+                android:id="@+id/mainFragmentHourlyForecast_textView"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="30dp"
+                android:fontFamily="@font/muli"
+                android:gravity="start|center"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="@string/hourly_weather_forecast"
+                android:textColor="@color/black"
+                android:textFontWeight="500"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentMoonShape_imageView"
+                tools:targetApi="p" />
+
+            <TextView
+                android:id="@+id/mainFragmentForecastDay_textView"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="0dp"
+                android:fontFamily="@font/muli"
+                android:textFontWeight="500"
+                android:gravity="start|center"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:text="@string/_3_day_weather_forecast"
+                android:textColor="@color/black"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mainFragmentHourlyWeather_recyclerView"
+                tools:targetApi="p" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+</layout>

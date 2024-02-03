@@ -10,9 +10,13 @@
     <color name="light_grey">#45808080</color>
     <color name="header_background_color">#B48D2988</color>
     <color name="header_background_color_2">#894585</color>
-   <!-- <color name="header_background_color_2">#A93BBB</color>-->
+    <!-- <color name="header_background_color_2">#A93BBB</color>-->
     <color name="yellow">#F0EFB812</color>
     <color name="orange">#F95959</color>
     <color name="gray_1">#37393B</color>
     <color name="rustic_orange">#D78C3D</color>
+    <color name="light_blue_50">#FFE1F5FE</color>
+    <color name="light_blue_200">#FF81D4FA</color>
+    <color name="light_blue_600">#FF039BE5</color>
+    <color name="light_blue_900">#FF01579B</color>
 </resources>

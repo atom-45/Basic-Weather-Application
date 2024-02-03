@@ -29,4 +29,16 @@
     <string name="header_text_2">Nearby places found at %1$s</string>
     <string name="current_forecast">Current and Forecast</string>
     <string name="weatherapi_com">By WeatherAPI.com</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="configure">Configure</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string name="name_and_surname">Name and Surname</string>
+    <string name="location_search">Location Search</string>
+    <string name="location_selection">Please go to settings and enter or select your location</string>
+    <string name="_3_day_weather_forecast">3-Day Weather Forecast</string>
+    <string name="hourly_weather_forecast">Hourly Weather Forecast</string>
+    <string name="select_your_weather_location">Select your weather location</string>
 </resources>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="forecast"
+            type="com.example.basicweatherapp.models.ForecastDay" />
+    </data>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/forecast_cardView"
+        android:layout_width="120dp"
+        android:layout_height="150dp"
+        android:layout_margin="10dp"
+        android:background="@color/white"
+        app:cardCornerRadius="10dp"
+        app:cardElevation="5dp">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/forecastCardTime_textView"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:gravity="center"
+                android:textColor="@color/black"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:fontFamily="@font/muli"
+                app:convertDate="@{forecast.date}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/forecastCardWeatherIcon_imageView"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:padding="3dp"
+                android:scaleType="fitCenter"
+                app:weatherIcon="@{forecast.day.condition.iconURL}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardTime_textView"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/forecastCardTemperature_textView"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:fontFamily="@font/muli"
+                android:textColor="@color/black"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:text='@{String.format("%s°",forecast.day.maxTemperature)}'
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardWeatherIcon_imageView" />
+
+            <ImageView
+                android:id="@+id/forecastCardRainProbability_imageView"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/rain_2"
+                app:layout_constraintEnd_toStartOf="@+id/forecastCardWindSpeed_imageView"
+                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardTemperature_textView"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/forecastCardRainProbability_textView"
+                android:layout_width="50dp"
+                android:layout_height="30dp"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:gravity="center"
+                android:textColor="@color/black"
+                android:fontFamily="@font/muli"
+                android:text='@{String.format("%d%%",forecast.day.rain_probability)}'
+                app:layout_constraintEnd_toStartOf="@+id/forecastCardWindSpeed_textView"
+                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardRainProbability_imageView" />
+
+            <ImageView
+                android:id="@+id/forecastCardWindSpeed_imageView"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/wind_2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintStart_toEndOf="@+id/forecastCardRainProbability_imageView"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardTemperature_textView"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/forecastCardWindSpeed_textView"
+                android:layout_width="50dp"
+                android:layout_height="30dp"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:gravity="center"
+                android:textColor="@color/black"
+                android:fontFamily="@font/muli"
+                android:text='@{String.format("%.2f kph",forecast.day.maxWind)}'
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.5"
+                app:layout_constraintStart_toEndOf="@+id/forecastCardRainProbability_textView"
+                app:layout_constraintTop_toBottomOf="@+id/forecastCardWindSpeed_imageView" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+</layout>

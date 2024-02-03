@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+        <variable
+            name="place"
+            type="com.example.basicweatherapp.models.Place" />
+    </data>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/locationSearch_cardView"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:layout_margin="10dp"
+        android:background="@color/white"
+        app:cardElevation="10dp"
+        app:cardCornerRadius="8dp">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/locationSearchNameLocation_textView"
+                android:layout_width="200dp"
+                android:layout_height="25dp"
+                android:layout_marginTop="16dp"
+                android:autoSizeMaxTextSize="155sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:gravity="start|center"
+                android:padding="1dp"
+                android:fontFamily="@font/muli"
+                android:textColor="@color/black"
+                android:text='@{String.format("%1s, %2s\n%3s",place.name, place.region, place.country)}'
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.113"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/locationSearchLocationCoord_textView"
+                android:layout_width="180dp"
+                android:layout_height="20dp"
+                android:autoSizeMaxTextSize="15sp"
+                android:autoSizeMinTextSize="10sp"
+                android:autoSizeStepGranularity="1sp"
+                android:autoSizeTextType="uniform"
+                android:gravity="start|center"
+                android:fontFamily="@font/muli"
+                android:textColor="@color/black"
+                android:text='@{String.format("Latitude: %1.2f\nLongitude: %2.2f",place.lat, place.lon)}'
+                app:layout_constraintEnd_toEndOf="@+id/locationSearchNameLocation_textView"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="@+id/locationSearchNameLocation_textView"
+                app:layout_constraintTop_toBottomOf="@+id/locationSearchNameLocation_textView" />
+
+            <ImageView
+                android:id="@+id/locationSearchAdd_imageView"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="16dp"
+                android:src="@drawable/baseline_add_circle_outline_24"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="ContentDescription" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+</layout>

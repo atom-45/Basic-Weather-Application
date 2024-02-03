@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_navigation"
+    app:startDestination="@id/main_fragment">
+
+    <fragment
+        android:id="@+id/main_fragment"
+        android:name="com.example.basicweatherapp.fragments.MainFragment"
+        android:label="Main"
+        tools:layout="@layout/fragment_main">
+
+        <action
+            android:id="@+id/action_main_fragment_to_settings_fragment"
+            app:destination="@id/settings_fragment" />
+        <action
+            android:id="@+id/action_main_fragment_to_location_selection_fragment"
+            app:destination="@id/location_selection_fragment" />
+
+        <argument
+            android:name="placeName"
+            app:argType="string"
+            android:defaultValue=""/>
+
+        <argument
+            android:name="region"
+            app:argType="string"
+            android:defaultValue=""/>
+
+        <argument android:name="country"
+            app:argType="string"
+            android:defaultValue=""/>
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/settings_fragment"
+        android:label="Settings"
+        android:name="com.example.basicweatherapp.fragments.SettingsFragment"
+        tools:layout="@layout/fragment_settings"/>
+
+    <fragment
+        android:id="@+id/location_selection_fragment"
+        android:label="Location Selection"
+        android:name="com.example.basicweatherapp.LocationSelectionFragment"
+        tools:layout="@layout/fragment_location_selection">
+
+        <action
+            android:id="@+id/action_location_selection_fragment_to_main_fragment"
+            app:destination="@id/main_fragment" />
+    </fragment>
+
+
+</navigation>

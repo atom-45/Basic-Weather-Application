@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.BasicWeatherApp" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Base.Theme.BasicWeatherApp" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/gray_1</item>
         <item name="colorPrimaryVariant">@color/cardview_dark_background</item>
@@ -10,17 +10,42 @@
         <item name="colorSecondaryVariant">@color/purple_200</item>
         <item name="colorOnSecondary">@color/teal_200</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        <item name="android:statusBarColor" >?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
 
-    <style name="SplashTheme"
-        parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="android:windowBackground">@color/cardview_dark_background</item>
-        <item name="android:windowNoTitle">true</item>
+
+    <style name="Base.Theme.BasicWeatherApp.Starting" parent="Theme.SplashScreen">
+       <!-- <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="windowActionBar">false</item>
-        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowContentOverlay">@null</item>-->
+        
+        <item name="windowSplashScreenIconBackgroundColor">@color/cardview_dark_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/sunny</item>
+        <item name="windowSplashScreenBackground">@color/cardview_dark_background</item>
+        <item name="splashScreenIconSize">108dp</item>
+        <item name="postSplashScreenTheme">@style/Base.Theme.BasicWeatherApp</item>
     </style>
+
+
+
+    <style name="Theme.BasicWeatherApp.AppWidgetContainerParent" parent="@android:style/Theme.DeviceDefault">
+        <!-- Radius of the outer bound of widgets to make the rounded corners -->
+        <item name="appWidgetRadius">16dp</item>
+        <!--
+        Radius of the inner view's bound of widgets to make the rounded corners.
+        It needs to be 8dp or less than the value of appWidgetRadius
+        -->
+        <item name="appWidgetInnerRadius">8dp</item>
+    </style>
+
+    <style name="Theme.BasicWeatherApp.AppWidgetContainer" parent="Theme.BasicWeatherApp.AppWidgetContainerParent">
+        <!-- Apply padding to avoid the content of the widget colliding with the rounded corners -->
+        <item name="appWidgetPadding">16dp</item>
+    </style>
+
+
+    <style name="Theme.BasicWeatherApp" parent="Base.Theme.BasicWeatherApp" />
 
 </resources>
