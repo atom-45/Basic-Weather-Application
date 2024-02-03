@@ -6,7 +6,9 @@ import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
 
+import java.util.List;
 import java.util.Objects;
+
 
 public class ForecastDay {
 
@@ -22,6 +24,10 @@ public class ForecastDay {
     @Expose
     private Astro astro;
 
+    @SerializedName("hour")
+    @Expose
+    private List<Hour> hours;
+
     public String getDate() {
         return date;
     }
@@ -35,19 +41,23 @@ public class ForecastDay {
         return astro;
     }
 
+    public List<Hour> getHours() {
+        return hours;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof ForecastDay)) return false;
-        ForecastDay that = (ForecastDay) o;
-        return getDate().equals(that.getDate())
-                && getDay().equals(that.getDay())
-                && getAstro().equals(that.getAstro());
+        if (!(o instanceof ForecastDay that)) return false;
+        return Objects.equals(getDate(), that.getDate()) &&
+                Objects.equals(getDay(), that.getDay()) &&
+                Objects.equals(getAstro(), that.getAstro()) &&
+                Objects.equals(getHours(), that.getHours());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getDate(), getDay(), getAstro());
+        return Objects.hash(getDate(), getDay(), getAstro(), getHours());
     }
 
     @NonNull
@@ -57,6 +67,7 @@ public class ForecastDay {
                 "date='" + date + '\'' +
                 ", Day=" + Day +
                 ", astro=" + astro +
+                ", hours=" + hours +
                 '}';
     }
 }

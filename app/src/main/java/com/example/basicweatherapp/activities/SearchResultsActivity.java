@@ -17,7 +17,7 @@ import android.widget.Toast;
 
 import com.example.basicweatherapp.R;
 import com.example.basicweatherapp.adapters.PlacesAdapter;
-import com.example.basicweatherapp.models.Constants;
+import com.example.basicweatherapp.utilities.Constants;
 import com.example.basicweatherapp.models.Place;
 import com.example.basicweatherapp.viewmodels.WeatherViewModel;
 
@@ -40,6 +40,7 @@ public class SearchResultsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search_results);
+
 
         ActionBar actionBar = getSupportActionBar();
         assert actionBar != null;

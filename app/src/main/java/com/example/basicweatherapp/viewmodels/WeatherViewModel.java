@@ -4,7 +4,10 @@ import android.app.Application;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.viewmodel.CreationExtras;
+import androidx.lifecycle.viewmodel.ViewModelInitializer;
 
+import com.example.basicweatherapp.application.WeatherApplication;
 import com.example.basicweatherapp.models.Place;
 import com.example.basicweatherapp.repositories.WeatherRepository;
 import com.example.basicweatherapp.responses.AstronomyResponse;
@@ -16,17 +19,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
+import kotlin.jvm.functions.Function1;
 
 public class WeatherViewModel extends AndroidViewModel {
 
     private final WeatherRepository weatherRepository;
 
-    public WeatherViewModel(@NonNull Application application) {
+    @Inject
+    public WeatherViewModel(@NonNull Application application, WeatherRepository weatherRepository) {
         super(application);
-        weatherRepository = new WeatherRepository();
+        this.weatherRepository = weatherRepository;
     }
+
+    public static final ViewModelInitializer<WeatherViewModel> initializer =
+            new ViewModelInitializer<>(WeatherViewModel.class, creationExtras ->
+            {
+                WeatherApplication application = new WeatherApplication();
+                return  new WeatherViewModel(application,
+                        application.applicationComponent.weatherRepository());
+
+            });
 
     public Observable<List<Place>> getPlaces(String location){
         return weatherRepository.getPlaces(location);

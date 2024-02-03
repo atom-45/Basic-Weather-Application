@@ -4,8 +4,7 @@ package com.example.basicweatherapp.repositories;
 
 import androidx.annotation.NonNull;
 
-import com.example.basicweatherapp.models.Constants;
-import com.example.basicweatherapp.models.Current;
+import com.example.basicweatherapp.utilities.Constants;
 import com.example.basicweatherapp.models.ForecastDay;
 import com.example.basicweatherapp.models.Place;
 import com.example.basicweatherapp.networking.APIClient;
@@ -19,16 +18,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
+import retrofit2.Retrofit;
 
 
 public class WeatherRepository {
 
     private final APIService apiService;
 
-    public WeatherRepository(){
-        apiService = APIClient.getRetrofit().create(APIService.class);
+    @Inject
+    public WeatherRepository(@NonNull Retrofit retrofit){
+        apiService = retrofit.create(APIService.class);
     }
 
     /**

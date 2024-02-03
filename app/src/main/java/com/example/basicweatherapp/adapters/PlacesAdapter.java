@@ -8,9 +8,12 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
+import androidx.databinding.DataBindingUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.basicweatherapp.R;
+import com.example.basicweatherapp.databinding.LocationSearchCardBinding;
+import com.example.basicweatherapp.interfaces.OnItemClickListener;
 import com.example.basicweatherapp.models.Place;
 
 import java.util.List;
@@ -26,6 +29,9 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.ViewHolder
      */
 
     private final List<Place> places;
+    private LayoutInflater inflater;
+
+    private OnItemClickListener onItemClickListener;
 
     public PlacesAdapter(List<Place> places){
         this.places = places;
@@ -55,10 +61,13 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.ViewHolder
     @Override
     public PlacesAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
 
-        CardView cv = (CardView) LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.place_container_cardview_2,parent,false);
+        if(inflater==null){
+            inflater = LayoutInflater.from(parent.getContext());
+        }
+        LocationSearchCardBinding locationSearchCardBinding = DataBindingUtil.inflate(inflater,
+                R.layout.location_search_card, parent, false);
 
-        return new PlacesAdapter.ViewHolder(cv);
+        return new PlacesAdapter.ViewHolder(locationSearchCardBinding);
     }
 
     /**
@@ -83,20 +92,13 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.ViewHolder
      */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        CardView cardView = holder.cardView;
+        Place place = places.get(position);
+        holder.bindLocation(place);
 
-        TextView location = cardView.findViewById(R.id.placeNameValue);
-        TextView region = cardView.findViewById(R.id.placeRegionValue);
-        TextView country = cardView.findViewById(R.id.placeCountryValue);
-        TextView latitude = cardView.findViewById(R.id.placeLatitudeValue);
-        TextView longitude = cardView.findViewById(R.id.placeLongitudeValue);
-
-        location.setText(places.get(position).getName());
-        region.setText(places.get(position).getRegion());
-        country.setText(places.get(position).getCountry());
-        latitude.setText(String.format(Locale.UK,"%2.2f", places.get(position).getLat()));
-        longitude.setText(String.format(Locale.UK,"%2.2f",places.get(position).getLon()));
-
+        holder.locationSearchCardBinding.locationSearchAddImageView.setOnClickListener(v ->
+        {
+            onItemClickListener.onItemClick(place);
+        });
     }
 
     /**
@@ -109,12 +111,22 @@ public class PlacesAdapter extends RecyclerView.Adapter<PlacesAdapter.ViewHolder
         return places.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder{
+    public void setOnItemClickListener(OnItemClickListener onItemClickListener){
+        this.onItemClickListener = onItemClickListener;
+    }
 
-        private final CardView cardView;
-        public ViewHolder(@NonNull CardView cv) {
-            super(cv);
-            cardView = cv;
+    public static class ViewHolder extends RecyclerView.ViewHolder
+    {
+        private final LocationSearchCardBinding locationSearchCardBinding;
+
+        public ViewHolder(@NonNull LocationSearchCardBinding locationSearchCardBinding) {
+            super(locationSearchCardBinding.getRoot());
+            this.locationSearchCardBinding = locationSearchCardBinding;
+        }
+
+        public void bindLocation(Place place){
+            locationSearchCardBinding.setPlace(place);
+            locationSearchCardBinding.executePendingBindings();
         }
     }
 }

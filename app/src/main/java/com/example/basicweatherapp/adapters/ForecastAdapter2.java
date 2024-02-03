@@ -79,11 +79,11 @@ public class ForecastAdapter2 extends RecyclerView.Adapter<ForecastAdapter2.View
         ImageView weatherIcon = cardView.findViewById(R.id.weather_icon);
 
         if(requestType.equals("current")){
-            temperature.setText(String.format(Locale.UK,"%2.1f\u00B0",current.getTemp_c()));
+            temperature.setText(String.format(Locale.UK,"%2.1f°",current.getTemp_c()));
             humidity.setText(String.format(Locale.getDefault(),"%2d%%",current.getHumidity()
             ));
         } else {
-            temperature.setText(String.format(Locale.UK,"%2.1f\u00B0",
+            temperature.setText(String.format(Locale.UK,"%2.1f°",
                     getCurrentDay(position).getMaxTemperature()));
             humidity.setText(String.format(Locale.getDefault(),"%2d%%",
                    getCurrentDay(position).getAverageHumidity()));

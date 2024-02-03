@@ -9,7 +9,7 @@ import android.os.Handler;
 
 import com.example.basicweatherapp.R;
 
-@SuppressLint("CustomSplashScreen")
+
 public class SplashActivity extends AppCompatActivity {
 
     @Override
@@ -21,5 +21,6 @@ public class SplashActivity extends AppCompatActivity {
             startActivity(new Intent(getApplicationContext(),MainActivity.class));
             finish();
         },1000);
+
     }
 }
