@@ -41,4 +41,26 @@
     <string name="_3_day_weather_forecast">3-Day Weather Forecast</string>
     <string name="hourly_weather_forecast">Hourly Weather Forecast</string>
     <string name="select_your_weather_location">Select your weather location</string>
+    <string name="temperature_c">Temperature (°C)</string>
+    <string name="humidity_a">Humidity (%)</string>
+    <string name="pressure_hpa">Pressure (hPa)</string>
+    <string name="altitude_m">Altitude (m)</string>
+    <string name="sensor_readings_message">* sensor readings get updated every 10 minutes</string>
+    <string name="trends">Trends</string>
+    <string name="time_period">Time Period</string>
+    <string name="clear">Clear</string>
+    <string name="plot">Plot</string>
+
+    <string-array name="periods">
+        <item>30 min</item>
+        <item>60 min</item>
+        <item>90 min</item>
+        <item>120 min</item>
+        <item>150 min</item>
+        <item>180 min</item>
+        <item>210 min</item>
+        <item>240 min</item>
+        <item>270 min</item>
+        <item>300 min</item>
+    </string-array>
 </resources>

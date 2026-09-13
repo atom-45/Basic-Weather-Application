@@ -22,7 +22,7 @@
         <item name="android:windowContentOverlay">@null</item>-->
 
         <item name="windowSplashScreenIconBackgroundColor">@color/cardview_dark_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/sunny</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
         <item name="windowSplashScreenBackground">@color/cardview_dark_background</item>
         <item name="splashScreenIconSize">108dp</item>
         <item name="postSplashScreenTheme">@style/Base.Theme.BasicWeatherApp</item>
