@@ -1,6 +1,7 @@
 package com.example.basicweatherapp.presentation.activities
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
@@ -16,7 +17,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -39,6 +42,7 @@ import androidx.navigation.navArgument
 import com.example.basicweatherapp.R
 import com.example.basicweatherapp.data.models.Place
 import com.example.basicweatherapp.data.models.SensorData
+import com.example.basicweatherapp.data.models.PredictionVerification
 import com.example.basicweatherapp.data.models.User
 import com.example.basicweatherapp.data.remote.responses.ForecastResponse
 import com.example.basicweatherapp.di.application.WeatherApplication
@@ -51,6 +55,7 @@ import com.example.basicweatherapp.presentation.viewmodels.SensorDataViewModel
 import com.example.basicweatherapp.presentation.viewmodels.UserViewModel
 import com.example.basicweatherapp.presentation.viewmodels.WeatherViewModel
 import com.example.basicweatherapp.services.WeatherBLEService
+import com.example.basicweatherapp.utilities.Constants
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -99,11 +104,32 @@ class MainActivity : ComponentActivity() {
     }
 
     private val bleScanCallback = object : ScanCallback() {
+        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             super.onScanResult(callbackType, result)
-            deviceAddress = result.device.address
-            Log.d(TAG, "onScanResult Found Device: $deviceAddress")
-            connectToBLEDevice(deviceAddress!!)
+            val device = result.device
+            val deviceName = device.name
+            
+            // Check for the specific Arduino Nano RP2040 Connect device
+            val hasTargetName = deviceName != null && (deviceName.contains(Constants.ARDUINO_DEVICE_NAME, ignoreCase = true))
+
+            if (hasTargetName) {
+                deviceAddress = device.address
+                Log.d(TAG, "onScanResult Found Target Device: $deviceName ($deviceAddress)")
+                connectToBLEDevice(deviceAddress!!)
+
+                // Stop scanning once the target device is found
+                if (scanning) {
+                    try {
+                        bluetoothAdapter?.bluetoothLeScanner?.stopScan(this)
+                        scanning = false
+                    } catch (e: SecurityException) {
+                        Log.e(TAG, "SecurityException while stopping scan: ${e.message}")
+                    }
+                }
+            } else {
+                Log.d(TAG, "onScanResult Ignored Device: ${deviceName ?: "Unknown"} (${device.address})")
+            }
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -233,7 +259,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkPermissionsAndStartBT() {
-        val permissions = arrayOf(
+        val permissions = mutableListOf(
             Manifest.permission.BLUETOOTH_CONNECT,
             Manifest.permission.BLUETOOTH_ADMIN,
             Manifest.permission.BLUETOOTH_ADVERTISE,
@@ -242,12 +268,16 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         val missingPermissions = permissions.filter {
             ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
 
         if (missingPermissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, permissions, REQUEST_ENABLE_BT)
+            ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), REQUEST_ENABLE_BT)
         }
 
         bluetoothManager = getSystemService(BluetoothManager::class.java)
@@ -446,13 +476,18 @@ fun RainPredictionBottomSheet(
                         spread = current.temperature - dewPoint,
                         dewPoint = dewPoint,
                         trends = pressureTrends,
-                        lastUpdated = current.date
+                        lastUpdated = current.date,
+                        temp = current.temperature,
+                        humidity = current.humidity,
+                        pressure = current.pressure
                     )
                 }
             }, {
                 Log.e("RainPrediction", "Error loading data", it)
             })
     }
+
+    var feedbackSubmitted by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -463,7 +498,8 @@ fun RainPredictionBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 40.dp, start = 20.dp, end = 20.dp),
+                .padding(bottom = 40.dp, start = 20.dp, end = 20.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -511,7 +547,61 @@ fun RainPredictionBottomSheet(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Verification Section
+                if (!feedbackSubmitted && (analysis!!.spread < 10)) {
+                    Text(
+                        text = "Is it actually raining now?",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = Muli,
+                        color = Color.Black.copy(alpha = 0.8f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Yes", "No", "Cloudy").forEach { outcome ->
+                            AssistChip(
+                                onClick = {
+                                    val verification = PredictionVerification(
+                                        analysis!!.lastUpdated,
+                                        analysis!!.temp,
+                                        analysis!!.humidity,
+                                        analysis!!.pressure,
+                                        analysis!!.prediction,
+                                        outcome
+                                    )
+                                    sensorDataViewModel.insertVerification(verification)
+                                        .subscribeOn(Schedulers.io())
+                                        .observeOn(AndroidSchedulers.mainThread())
+                                        .subscribe({
+                                            feedbackSubmitted = true
+                                        }, {
+                                            Log.e("RainPrediction", "Error saving feedback", it)
+                                        })
+                                },
+                                label = { Text(outcome, fontFamily = Muli) },
+                                modifier = Modifier.weight(1f),
+                                colors = AssistChipDefaults.assistChipColors(
+                                    labelColor = if (outcome == "Yes") Color(0xFF1B5E20) else Color.DarkGray
+                                )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                } else if (feedbackSubmitted) {
+                    Text(
+                        text = "Thank you for your feedback!",
+                        fontSize = 14.sp,
+                        color = Color(0xFF2E7D32),
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = Muli
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
                 // Stats Grid
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -597,7 +687,10 @@ data class RainAnalysis(
     val spread: Float,
     val dewPoint: Float,
     val trends: FloatArray,
-    val lastUpdated: String
+    val lastUpdated: String,
+    val temp: Float,
+    val humidity: Float,
+    val pressure: Float
 )
 
 private fun calculateDewPoint(temp: Float, humidity: Float): Float {

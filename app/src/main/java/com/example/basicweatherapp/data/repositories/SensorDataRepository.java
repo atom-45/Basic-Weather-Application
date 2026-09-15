@@ -32,6 +32,10 @@ public class SensorDataRepository {
         return sensorDAO.getAllSensorData();
     }
 
+    public List<SensorData> getSensorDataByRange(String startDate, String endDate) {
+        return sensorDAO.getSensorDataByRange(startDate, endDate);
+    }
+
     public Completable insertSensorData(SensorData sensorData){
         return sensorDAO.insertSensorData(sensorData);
     }

@@ -13,6 +13,7 @@ public class Constants {
     public final static String RP2040_SERVICE_UUID = "f9e585d2-77fa-47e6-abbb-113fd8874a98";
     public final static String RP2040_CHARACTERISTICS_UUID = "f9e585d3-77fa-47e6-abbb-113fd8874a98";
     public final static String DESCRIPTOR_GEN_UUID = "00002902-0000-1000-8000-00805f9b34fb";
+    public final static String ARDUINO_DEVICE_NAME = "RP2040 BME 680 Sensor";
 
 
 }

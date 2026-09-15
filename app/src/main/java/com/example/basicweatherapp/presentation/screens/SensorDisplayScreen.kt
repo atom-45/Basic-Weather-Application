@@ -9,7 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +24,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.basicweatherapp.R
 import com.example.basicweatherapp.data.models.SensorData
 import com.example.basicweatherapp.presentation.theme.BasicWeatherAppTheme
@@ -36,7 +38,10 @@ import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @Composable
@@ -81,6 +86,7 @@ fun SensorDisplayScreen(
             chartData = generateChartData(sensorDataList, selectedDataType, selectedPeriod, context)
         },
         onClearClick = { chartData = null },
+        onExportClick = { start, end -> sensorDataViewModel.exportData(start, end) },
         onBackClick = onBackClick,
         onRainPredictionClick = onRainPredictionClick
     )
@@ -97,10 +103,11 @@ fun SensorDisplayContent(
     chartData: LineData?,
     onPlotClick: () -> Unit,
     onClearClick: () -> Unit,
+    onExportClick: (String, String) -> Unit,
     onBackClick: () -> Unit,
     onRainPredictionClick: () -> Unit
 ) {
-    val periods = listOf("10 minutes", "30 minutes", "60 minutes", "120 minutes", "180 minutes", "240 minutes", "300 minutes")
+    val periods = listOf("10 minutes", "30 minutes", "60 minutes", "120 minutes", "150 minutes", "180 minutes", "240 minutes", "300 minutes")
     val dataTypes = listOf("Temperature", "Humidity", "Pressure")
     val lastData = sensorDataList.lastOrNull()
 
@@ -129,6 +136,14 @@ fun SensorDisplayContent(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
                 
                 if (lastData != null) {
@@ -154,7 +169,8 @@ fun SensorDisplayContent(
                 ModernSensorCard(
                     label = "Temperature",
                     value = lastData?.let { String.format(Locale.ENGLISH, "%.2f ℃", it.temperature) } ?: "-- ℃",
-                    modifier = Modifier.fillMaxWidth().height(160.dp)
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    isHero = true
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -229,7 +245,7 @@ fun SensorDisplayContent(
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(8.dp)) {
                     // Segmented Button for Data Type
                     SingleChoiceSegmentedButtonRow(
                         modifier = Modifier.fillMaxWidth()
@@ -263,7 +279,7 @@ fun SensorDisplayContent(
                         ExposedDropdownMenuBox(
                             expanded = expanded,
                             onExpandedChange = { expanded = !expanded },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(0.8f)
                         ) {
                             OutlinedTextField(
                                 value = selectedPeriod,
@@ -331,8 +347,95 @@ fun SensorDisplayContent(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(240.dp)
+                            .height(280.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Export Dataset Section
+                    var showDatePicker by remember { mutableStateOf(false) }
+                    val dateRangePickerState = rememberDateRangePickerState()
+
+                    Button(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.2f),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+                    ) {
+                        Icon(painterResource(id = R.drawable.ic_launcher_foreground), // Placeholder icon
+                            contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Export Historical Dataset", fontFamily = Muli)
+                    }
+
+                    if (showDatePicker) {
+                        Dialog(
+                            onDismissRequest = { showDatePicker = false },
+                            properties = DialogProperties(usePlatformDefaultWidth = false)
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(vertical = 40.dp, horizontal = 16.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 6.dp
+                            ) {
+                                Column {
+                                    DateRangePicker(
+                                        state = dateRangePickerState,
+                                        modifier = Modifier.weight(1f),
+                                        title = { 
+                                            Text(
+                                                text = "Select Date Range", 
+                                                modifier = Modifier.padding(start = 24.dp, top = 24.dp),
+                                                style = MaterialTheme.typography.labelMedium
+                                            ) 
+                                        },
+                                        headline = {
+                                            DateRangePickerDefaults.DateRangePickerHeadline(
+                                                selectedStartDateMillis = dateRangePickerState.selectedStartDateMillis,
+                                                selectedEndDateMillis = dateRangePickerState.selectedEndDateMillis,
+                                                displayMode = dateRangePickerState.displayMode,
+                                                dateFormatter = DatePickerDefaults.dateFormatter(),
+                                                modifier = Modifier.padding(start = 24.dp, bottom = 12.dp)
+                                            )
+                                        }
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(end = 16.dp, bottom = 16.dp),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        TextButton(onClick = { showDatePicker = false }) {
+                                            Text("Cancel")
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Button(
+                                            onClick = {
+                                                val startMs = dateRangePickerState.selectedStartDateMillis
+                                                val endMs = dateRangePickerState.selectedEndDateMillis
+                                                if (startMs != null && endMs != null) {
+                                                    val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                                                    val start = Instant.ofEpochMilli(startMs).atZone(ZoneId.systemDefault()).toLocalDateTime().format(formatter)
+                                                    val end = Instant.ofEpochMilli(endMs).atZone(ZoneId.systemDefault()).toLocalDateTime().withHour(23).withMinute(59).format(formatter)
+                                                    onExportClick(start, end)
+                                                }
+                                                showDatePicker = false
+                                            }
+                                        ) {
+                                            Text("Export")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(40.dp))
@@ -341,7 +444,7 @@ fun SensorDisplayContent(
 }
 
 @Composable
-fun ModernSensorCard(label: String, value: String, modifier: Modifier) {
+fun ModernSensorCard(label: String, value: String, modifier: Modifier, isHero: Boolean = false) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
@@ -350,7 +453,7 @@ fun ModernSensorCard(label: String, value: String, modifier: Modifier) {
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
         ) {
             Text(
                 text = label,
@@ -362,7 +465,7 @@ fun ModernSensorCard(label: String, value: String, modifier: Modifier) {
             Text(
                 text = value,
                 color = Color.White,
-                fontSize = if (modifier.toString().contains("height(160.dp)")) 48.sp else 24.sp,
+                fontSize = if (isHero) 48.sp else 24.sp,
                 fontFamily = Muli,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.End)
@@ -431,6 +534,7 @@ fun SensorDisplayScreenPreview() {
             chartData = null,
             onPlotClick = {},
             onClearClick = {},
+            onExportClick = { _, _ -> },
             onBackClick = {},
             onRainPredictionClick = {}
         )

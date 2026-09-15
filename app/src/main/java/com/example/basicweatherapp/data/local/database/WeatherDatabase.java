@@ -19,10 +19,11 @@ import com.example.basicweatherapp.data.local.dao.UserDAO;
 import com.example.basicweatherapp.data.models.CachedForecast;
 import com.example.basicweatherapp.data.models.Location;
 import com.example.basicweatherapp.data.models.Place;
+import com.example.basicweatherapp.data.models.PredictionVerification;
 import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.models.User;
 
-@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class}, version = 3, exportSchema = false)
+@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class}, version = 4, exportSchema = false)
 public abstract class WeatherDatabase extends RoomDatabase {
     private static volatile WeatherDatabase instance;
 
@@ -35,7 +36,7 @@ public abstract class WeatherDatabase extends RoomDatabase {
                if(instance==null){
                    instance = Room.databaseBuilder(context,WeatherDatabase.class,
                            "weather_database")
-                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                            .build();
                }
             }
@@ -62,9 +63,20 @@ public abstract class WeatherDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `prediction_verifications` " +
+                    "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` TEXT, " +
+                    "`temperature` FLOAT NOT NULL, `humidity` FLOAT NOT NULL, `pressure` FLOAT NOT NULL, " +
+                    "`prediction` TEXT, `actual_outcome` TEXT)");
+        }
+    };
+
     public abstract LocationDAO locationDAO();
     public abstract UserDAO userDAO();
     public abstract PlaceDAO placeDAO();
     public abstract SensorDAO sensorDAO();
     public abstract CachedForecastDAO cachedForecastDAO();
+    public abstract com.example.basicweatherapp.data.local.dao.PredictionVerificationDAO predictionVerificationDAO();
 }
