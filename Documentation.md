@@ -16,9 +16,12 @@ The Basic Weather App is a comprehensive weather monitoring solution that integr
 - **Dagger 2:** Handles dependency injection for ViewModels and Repositories.
 
 ### Data Layer
-- **Local Persistence (Room):** Stores user profiles, saved locations, sensor data history, and cached weather forecasts for offline use.
+- **Local Persistence (Room - Version 4):** Stores user profiles, saved locations, sensor data history, cached weather forecasts, and **labeled prediction verifications**.
 - **Remote API (Retrofit):** Fetches global weather data from WeatherAPI.com.
-- **BLE Service:** `WeatherBLEService` handles real-time data acquisition from local sensors.
+- **BLE Service:** `WeatherBLEService` handles real-time data acquisition. Optimized for **Arduino Nano RP2040 Connect** with intelligent target-device filtering.
+
+### Background Processing
+- **WorkManager:** Manages heavy, long-running tasks like historical dataset exports. The `ExportWorker` handles database queries, CSV generation, and ZIP compression in the background to ensure reliability and memory safety.
 
 ## Core Screens
 
@@ -30,19 +33,22 @@ The Basic Weather App is a comprehensive weather monitoring solution that integr
 - **Forecast Rows:** Horizontal lists for hourly and 3-day forecasts with centralized alignment.
 
 ### 2. Sensor Display Screen (`SensorDisplayScreen.kt`)
-- **Bento Grid:** Displays real-time Temperature, Humidity, Pressure, and Altitude from the BLE sensor.
-- **Interactive Trends:** A configurable graph (MPAndroidChart) that auto-updates when new sensor data arrives. Supports historical data viewing up to 5 hours.
-- **Rain Analysis Trigger:** A dedicated card to launch the predictive meteorological dashboard.
+- **Bento Grid:** Displays real-time Temperature, Humidity, Pressure, and Altitude from the BLE sensor. Cards feature refined vertical centering and hero-state font scaling.
+- **Interactive Trends:** A configurable graph (MPAndroidChart) that auto-updates with new sensor data. Supports historical data viewing up to 5 hours.
+- **Dataset Export:** A dedicated section utilizing the Material 3 `DateRangePicker` to trigger background exports of historical sensor readings and verifications.
 
 ### 3. Rain Analysis Bottom Sheet
 - **Scientific Forecasting:** Calculates local rain probability based on live or last-available sensor data.
+- **Ground Truth Verification:** Includes a feedback loop where users can confirm the actual weather outcome ("Yes", "No", "Cloudy"). This data is saved to a dedicated table to build a labeled dataset for future model refinement.
 - **Metrics:** Displays Dew Point, Temperature Spread, and multi-stage Pressure Trends (30m to 3h).
 
 ## Security & Configuration
-- **API Key Handling:** The WeatherAPI key is stored in `local.properties` and accessed via `BuildConfig` to prevent exposure in version control.
-- **Offline Mode:** The app automatically caches the last successful weather fetch in the Room database, ensuring data availability even without an internet connection.
+- **API Key Handling:** The WeatherAPI key is stored in `local.properties` and accessed via `BuildConfig`.
+- **Permissions:** Dynamically handles Bluetooth (Scan/Connect) and Notification permissions (required for WorkManager feedback on API 33+).
+- **Offline Mode:** The app automatically caches the last successful weather fetch in the Room database.
 
 ## Build Requirements
 - **Android Studio:** Quail (2024.1.1) or newer recommended.
 - **Min SDK:** 26 (Android 8.0).
 - **Target SDK:** 34.
+- **Compose BOM:** 2025.02.00 (Stable).
