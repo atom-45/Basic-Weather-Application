@@ -23,7 +23,7 @@ import com.example.basicweatherapp.data.models.PredictionVerification;
 import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.models.User;
 
-@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class}, version = 4, exportSchema = false)
+@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class}, version = 5, exportSchema = false)
 public abstract class WeatherDatabase extends RoomDatabase {
     private static volatile WeatherDatabase instance;
 
@@ -36,7 +36,7 @@ public abstract class WeatherDatabase extends RoomDatabase {
                if(instance==null){
                    instance = Room.databaseBuilder(context,WeatherDatabase.class,
                            "weather_database")
-                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                            .build();
                }
             }
@@ -70,6 +70,14 @@ public abstract class WeatherDatabase extends RoomDatabase {
                     "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` TEXT, " +
                     "`temperature` FLOAT NOT NULL, `humidity` FLOAT NOT NULL, `pressure` FLOAT NOT NULL, " +
                     "`prediction` TEXT, `actual_outcome` TEXT)");
+        }
+    };
+
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `prediction_verifications` ADD COLUMN `residual` DOUBLE NOT NULL DEFAULT 0.0");
+            db.execSQL("ALTER TABLE `prediction_verifications` ADD COLUMN `source` TEXT");
         }
     };
 

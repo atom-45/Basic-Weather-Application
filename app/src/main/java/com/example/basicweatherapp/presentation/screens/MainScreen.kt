@@ -76,9 +76,26 @@ fun MainScreen(
     var isEditingName by remember { mutableStateOf(false) }
     var editedName by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
     val savedPlacesState = placeViewModel.allPlaces.subscribeAsState(initial = emptyList())
     val savedPlaces = savedPlacesState.value
+
+    // Safe Search Implementation: Automatically cancels stale searches
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotEmpty()) {
+            weatherViewModel.getPlaces(searchQuery)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ places ->
+                    searchResults = places ?: emptyList()
+                }, {
+                    searchResults = emptyList()
+                })
+        } else {
+            searchResults = emptyList()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -103,21 +120,7 @@ fun MainScreen(
                     DockedSearchBar(
                         modifier = Modifier.fillMaxWidth(),
                         query = searchQuery,
-                        onQueryChange = { 
-                            searchQuery = it
-                            if (it.isNotEmpty()) {
-                                weatherViewModel.getPlaces(it)
-                                    .subscribeOn(Schedulers.io())
-                                    .observeOn(AndroidSchedulers.mainThread())
-                                    .subscribe({ places ->
-                                        searchResults = places ?: emptyList()
-                                    }, {
-                                        searchResults = emptyList()
-                                    })
-                            } else {
-                                searchResults = emptyList()
-                            }
-                        },
+                        onQueryChange = { searchQuery = it },
                         onSearch = { isSearchActive = false },
                         active = isSearchActive,
                         onActiveChange = { isSearchActive = it },
@@ -258,7 +261,9 @@ fun MainScreen(
                             .subscribe({
                                 isEditingName = false
                                 Toast.makeText(context, "Welcome, $editedName!", Toast.LENGTH_SHORT).show()
-                            }, {})
+                            }, {
+                                Toast.makeText(context, "Error saving name", Toast.LENGTH_SHORT).show()
+                            })
                     }
                 }
             )

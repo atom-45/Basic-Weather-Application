@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,7 +29,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.basicweatherapp.R
+import com.example.basicweatherapp.data.models.PredictionVerification
 import com.example.basicweatherapp.data.models.SensorData
+import com.example.basicweatherapp.physics.StormReport
+import androidx.compose.runtime.rxjava3.subscribeAsState
 import com.example.basicweatherapp.presentation.theme.BasicWeatherAppTheme
 import com.example.basicweatherapp.presentation.theme.Muli
 import com.example.basicweatherapp.presentation.viewmodels.SensorDataViewModel
@@ -50,23 +55,14 @@ fun SensorDisplayScreen(
     onBackClick: () -> Unit,
     onRainPredictionClick: () -> Unit
 ) {
-    var sensorDataList by remember { mutableStateOf<List<SensorData>>(emptyList()) }
+    val sensorDataList by sensorDataViewModel.allSensorData.subscribeAsState(initial = emptyList())
+    val stormReport by sensorDataViewModel.stormAnalysis.subscribeAsState(initial = null)
+    
     var selectedDataType by remember { mutableStateOf("Temperature") }
     var selectedPeriod by remember { mutableStateOf("10 minutes") }
     var chartData by remember { mutableStateOf<LineData?>(null) }
     
     val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        sensorDataViewModel.allSensorData
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ data ->
-                sensorDataList = data
-            }, {
-                Toast.makeText(context, "Error loading sensor data", Toast.LENGTH_SHORT).show()
-            })
-    }
 
     // Auto-update graph when new data arrives or selections change
     LaunchedEffect(sensorDataList, selectedDataType, selectedPeriod) {
@@ -77,6 +73,7 @@ fun SensorDisplayScreen(
 
     SensorDisplayContent(
         sensorDataList = sensorDataList,
+        stormReport = stormReport,
         selectedDataType = selectedDataType,
         onDataTypeChange = { selectedDataType = it },
         selectedPeriod = selectedPeriod,
@@ -88,7 +85,13 @@ fun SensorDisplayScreen(
         onClearClick = { chartData = null },
         onExportClick = { start, end -> sensorDataViewModel.exportData(start, end) },
         onBackClick = onBackClick,
-        onRainPredictionClick = onRainPredictionClick
+        onRainPredictionClick = onRainPredictionClick,
+        onVerificationSubmit = { verification ->
+            sensorDataViewModel.insertVerification(verification)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe()
+        }
     )
 }
 
@@ -96,6 +99,7 @@ fun SensorDisplayScreen(
 @Composable
 fun SensorDisplayContent(
     sensorDataList: List<SensorData>,
+    stormReport: StormReport?,
     selectedDataType: String,
     onDataTypeChange: (String) -> Unit,
     selectedPeriod: String,
@@ -105,7 +109,8 @@ fun SensorDisplayContent(
     onClearClick: () -> Unit,
     onExportClick: (String, String) -> Unit,
     onBackClick: () -> Unit,
-    onRainPredictionClick: () -> Unit
+    onRainPredictionClick: () -> Unit,
+    onVerificationSubmit: (PredictionVerification) -> Unit
 ) {
     val periods = listOf("10 minutes", "30 minutes", "60 minutes", "120 minutes", "150 minutes", "180 minutes", "240 minutes", "300 minutes")
     val dataTypes = listOf("Temperature", "Humidity", "Pressure")
@@ -224,6 +229,113 @@ fun SensorDisplayContent(
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Thermodynamic Analysis",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontFamily = Muli
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ModernSensorCard(
+                    label = "Storm Speed",
+                    value = stormReport?.let { String.format(Locale.ENGLISH, "%.1f km/h", it.stormSpeedKmh) } ?: "-- km/h",
+                    modifier = Modifier.weight(1f).height(120.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                ModernSensorCard(
+                    label = "Arrival",
+                    value = stormReport?.let {
+                        if (it.arrivalTimeMinutes > 0) {
+                            String.format(Locale.ENGLISH, "%s (%.0f min)", it.arrivalTimestamp, it.arrivalTimeMinutes)
+                        } else "N/A"
+                    } ?: "--:--",
+                    modifier = Modifier.weight(1f).height(120.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Safety Banner
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (stormReport?.isSafeToWalk == false)
+                        Color(0xFFFF5252).copy(alpha = 0.8f)
+                    else Color.White.copy(alpha = 0.15f)
+                ),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground), // Placeholder icon
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = stormReport?.statusMessage ?: "Awaiting atmospheric analysis...",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontFamily = Muli,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Thermodynamic Verification Section
+            if (stormReport != null && !stormReport.isSafeToWalk) {
+                var feedbackSubmitted by remember { mutableStateOf(false) }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = if (feedbackSubmitted) "Feedback received! Calibration data saved." 
+                                   else "Verify this Thermodynamic Analysis:",
+                            color = if (feedbackSubmitted) Color(0xFF4CAF50) else Color.White,
+                            fontSize = 14.sp,
+                            fontFamily = Muli,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        if (!feedbackSubmitted) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            val outcomes = listOf("Heavy Rain", "Light Rain", "Cloudy", "Lightning", "Windy", "Clear")
+                            
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(outcomes) { outcome ->
+                                    ThermoFeedbackChip(outcome, stormReport, lastData, onVerificationSubmit) {
+                                        feedbackSubmitted = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             Spacer(modifier = Modifier.height(30.dp))
@@ -444,6 +556,40 @@ fun SensorDisplayContent(
 }
 
 @Composable
+fun ThermoFeedbackChip(
+    outcome: String,
+    report: StormReport,
+    lastData: SensorData?,
+    onVerify: (PredictionVerification) -> Unit,
+    onSuccess: () -> Unit
+) {
+    AssistChip(
+        onClick = {
+            if (lastData != null) {
+                val verification = PredictionVerification(
+                    lastData.date,
+                    lastData.temperature,
+                    lastData.humidity,
+                    lastData.pressure,
+                    report.statusMessage,
+                    outcome,
+                    report.thermodynamicResidual,
+                    "THERMODYNAMIC_DE"
+                )
+                onVerify(verification)
+                onSuccess()
+            }
+        },
+        label = { Text(outcome, fontSize = 10.sp, color = Color.White) },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = Color.White.copy(alpha = 0.1f),
+            labelColor = Color.White
+        ),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
+    )
+}
+
+@Composable
 fun ModernSensorCard(label: String, value: String, modifier: Modifier, isHero: Boolean = false) {
     Card(
         modifier = modifier,
@@ -527,6 +673,7 @@ fun SensorDisplayScreenPreview() {
     BasicWeatherAppTheme {
         SensorDisplayContent(
             sensorDataList = emptyList(),
+            stormReport = null,
             selectedDataType = "Temperature",
             onDataTypeChange = {},
             selectedPeriod = "10 minutes",
@@ -536,7 +683,8 @@ fun SensorDisplayScreenPreview() {
             onClearClick = {},
             onExportClick = { _, _ -> },
             onBackClick = {},
-            onRainPredictionClick = {}
+            onRainPredictionClick = {},
+            onVerificationSubmit = {}
         )
     }
 }

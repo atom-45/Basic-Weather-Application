@@ -8,15 +8,25 @@ The application has undergone a complete visual transformation using **Jetpack C
 *   **Glassmorphism Design:** Sophisticated semi-transparent surfaces with subtle borders and dynamic gradients.
 *   **Hero Dashboard:** A dramatic focal point for temperature and primary weather conditions.
 *   **Bento Box Layouts:** Clean, organized grids for weather details and sensor readings.
-*   **Refined Sensor Cards:** Improved vertical alignment and dynamic font scaling for precise readability across different card sizes.
+*   **Safety & Analytics:** Integrated thermodynamic safety banners and horizontal scrollable verification chips.
 *   **Single-Dashboard Flow:** Integrated search and user profile management directly on the main screen.
+
+## 🚀 Thermodynamic Analysis Engine (NEW)
+
+The core of the application now features a custom physics engine that applies the **First Law of Thermodynamics** to your local environment.
+*   **Scientific Differential Equation:** The engine solves for the internal energy balance:
+    $$dT/dt = \frac{1}{\rho c_p} \frac{dp}{dt} + \frac{J}{c_p}$$
+*   **Real-Time Storm Tracking:** By monitoring the "Thermodynamic Residual" (Actual vs. Predicted cooling), the app detects atmospheric instability before rain even starts.
+*   **Dynamic Density:** Calculates air density ($\rho$) in real-time using Virtual Temperature to account for humidity variations.
+*   **Forward Projection:** Uses the Forward Euler method to predict the exact timestamp of rain arrival by projecting when the air parcel will hit the Dew Point.
+*   **Stationary Precision:** Optimized for stationary BLE sensors, calculating storm approach speed based on localized pressure tendencies ($dp/dt$).
 
 ## 🛠 Features
 
 *   **Global Forecasts:** Real-time, hourly, and 3-day forecasts for any city worldwide.
-*   **Precision BLE Integration:** Optimized for **Arduino Nano RP2040 Connect** (BME680). The app features an intelligent target-device filter to automatically connect to your local station while ignoring interference from other Bluetooth devices.
-*   **Rain Analysis & Ground Truth:** Localized rain probability forecasting based on sensor trends and dew point calculation. Now includes a **Verification Loop** allowing you to confirm actual outcomes, building a labeled dataset for future model refinement.
-*   **Dataset Exporting:** Professional data extraction tools using **Android WorkManager**. Export historical sensor data and manual verifications as a compressed ZIP containing formatted CSV files directly to your Downloads folder.
+*   **Precision BLE Integration:** Optimized for **Arduino Nano RP2040 Connect** (BME680). The app features an intelligent target-device filter to automatically connect to your local station.
+*   **Expanded Verification Loop:** A multi-category ground-truth system (**Heavy Rain, Light Rain, Cloudy, Windy, Lightning, Clear**). Verifications now capture the **Thermodynamic Residual**, creating a high-fidelity dataset for Johannesburg Highveld calibration.
+*   **Dataset Exporting:** Professional data extraction tools using **Android WorkManager**. Export historical sensor data and manual verifications as a compressed ZIP containing formatted CSV files.
 *   **Integrated Search & Recents:** Instant location switching with a modern search bar and swipe-to-delete management for saved places.
 *   **Offline Support:** Automatic caching of the last known weather data for seamless offline use.
 
@@ -24,13 +34,13 @@ The application has undergone a complete visual transformation using **Jetpack C
 
 The project follows modern Android development practices with a clean separation of concerns:
 *   **UI Layer:** 100% Jetpack Compose with a Single-Activity architecture.
-*   **Logic Layer:** MVVM (Model-View-ViewModel) architecture.
+*   **Reactive Lifecycle Management:** Migrated from manual disposables to idiomatic Compose `subscribeAsState()` and `LaunchedEffect` patterns, ensuring leak-proof data streaming.
+*   **Logic Layer:** MVVM architecture with specialized **Physics Utility Packages** for atmospheric calculations.
 *   **Background Processing:** **WorkManager** for reliable, memory-safe historical data exports.
-*   **Concurrency:** RxJava 3 for core business logic and BLE streams, bridged to Compose via `runtime-rxjava3`.
+*   **Concurrency:** RxJava 3 for core business logic and BLE streams, bridged to Compose.
 *   **Networking:** Retrofit 2 & OkHttp for resilient API communication.
-*   **Persistence:** Room Database (Version 4) for local user data, saved locations, weather caching, and labeled prediction verifications.
+*   **Persistence:** Room Database (Version 5) storing user data, saved locations, weather caching, and detailed prediction verifications (including residuals).
 *   **Dependency Injection:** Dagger 2 for robust component management.
-*   **Image Loading:** Coil for efficient weather icon processing.
 
 ## 🚀 Getting Started
 

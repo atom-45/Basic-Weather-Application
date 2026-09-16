@@ -11,6 +11,8 @@ import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.repositories.PredictionVerificationRepository;
 import com.example.basicweatherapp.data.repositories.SensorDataRepository;
 import com.example.basicweatherapp.di.application.WeatherApplication;
+import com.example.basicweatherapp.physics.StormReport;
+import com.example.basicweatherapp.physics.StormThermodynamicsEngine;
 import com.example.basicweatherapp.workers.ExportWorker;
 
 import java.util.List;
@@ -40,6 +42,21 @@ public class SensorDataViewModel extends ViewModel {
 
     public Observable<List<SensorData>> getAllSensorData() {
         return sensorDataRepository.getAllSensorData();
+    }
+
+    /**
+     * Provides a real-time thermodynamic analysis of the storm based on sensor data trends.
+     * 
+     * @return An Observable emitting the latest StormReport derived from the First Law of Thermodynamics.
+     */
+    public Observable<StormReport> getStormAnalysis() {
+        return sensorDataRepository.getAllSensorData()
+                .filter(list -> list.size() >= 2)
+                .map(list -> {
+                    SensorData prev = list.get(list.size() - 2);
+                    SensorData current = list.get(list.size() - 1);
+                    return StormThermodynamicsEngine.analyze(prev, current);
+                });
     }
 
     public Completable insertSensorData(SensorData sensorData){

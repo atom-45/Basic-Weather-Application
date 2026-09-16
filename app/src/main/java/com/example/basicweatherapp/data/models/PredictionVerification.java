@@ -30,13 +30,22 @@ public class PredictionVerification implements Serializable {
     @ColumnInfo(name = "actual_outcome")
     private String actualOutcome;
 
-    public PredictionVerification(String timestamp, float temperature, float humidity, float pressure, String prediction, String actualOutcome) {
+    @ColumnInfo(name = "residual")
+    private double residual;
+
+    @ColumnInfo(name = "source")
+    private String source;
+
+    public PredictionVerification(String timestamp, float temperature, float humidity, float pressure, 
+                                  String prediction, String actualOutcome, double residual, String source) {
         this.timestamp = timestamp;
         this.temperature = temperature;
         this.humidity = humidity;
         this.pressure = pressure;
         this.prediction = prediction;
         this.actualOutcome = actualOutcome;
+        this.residual = residual;
+        this.source = source;
     }
 
     public int getId() {
@@ -93,5 +102,21 @@ public class PredictionVerification implements Serializable {
 
     public void setActualOutcome(String actualOutcome) {
         this.actualOutcome = actualOutcome;
+    }
+
+    public double getResidual() {
+        return residual;
+    }
+
+    public void setResidual(double residual) {
+        this.residual = residual;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 }

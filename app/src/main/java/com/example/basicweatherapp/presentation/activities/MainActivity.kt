@@ -17,6 +17,8 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -559,36 +561,14 @@ fun RainPredictionBottomSheet(
                         color = Color.Black.copy(alpha = 0.8f)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
+                    
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        listOf("Yes", "No", "Cloudy").forEach { outcome ->
-                            AssistChip(
-                                onClick = {
-                                    val verification = PredictionVerification(
-                                        analysis!!.lastUpdated,
-                                        analysis!!.temp,
-                                        analysis!!.humidity,
-                                        analysis!!.pressure,
-                                        analysis!!.prediction,
-                                        outcome
-                                    )
-                                    sensorDataViewModel.insertVerification(verification)
-                                        .subscribeOn(Schedulers.io())
-                                        .observeOn(AndroidSchedulers.mainThread())
-                                        .subscribe({
-                                            feedbackSubmitted = true
-                                        }, {
-                                            Log.e("RainPrediction", "Error saving feedback", it)
-                                        })
-                                },
-                                label = { Text(outcome, fontFamily = Muli) },
-                                modifier = Modifier.weight(1f),
-                                colors = AssistChipDefaults.assistChipColors(
-                                    labelColor = if (outcome == "Yes") Color(0xFF1B5E20) else Color.DarkGray
-                                )
-                            )
+                        val outcomes = listOf("Heavy Rain", "Light Rain", "Cloudy", "Windy", "Lightning", "Clear")
+                        items(outcomes) { outcome ->
+                            PredictionChip(outcome, analysis!!, sensorDataViewModel) { feedbackSubmitted = true }
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -632,6 +612,46 @@ fun RainPredictionBottomSheet(
             }
         }
     }
+}
+
+@Composable
+fun PredictionChip(
+    outcome: String,
+    analysis: RainAnalysis,
+    sensorDataViewModel: SensorDataViewModel,
+    onSuccess: () -> Unit
+) {
+    AssistChip(
+        onClick = {
+            val verification = PredictionVerification(
+                analysis.lastUpdated,
+                analysis.temp,
+                analysis.humidity,
+                analysis.pressure,
+                analysis.prediction,
+                outcome,
+                0.0, // No residual for static rain prediction
+                "STATIC_THRESHOLD"
+            )
+            sensorDataViewModel.insertVerification(verification)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    onSuccess()
+                }, {
+                    Log.e("RainPrediction", "Error saving feedback", it)
+                })
+        },
+        label = { Text(outcome, fontFamily = Muli, fontSize = 12.sp) },
+        modifier = Modifier.width(100.dp),
+        colors = AssistChipDefaults.assistChipColors(
+            labelColor = when(outcome) {
+                "Heavy Rain" -> Color(0xFFD32F2F)
+                "Clear" -> Color(0xFF388E3C)
+                else -> Color.DarkGray
+            }
+        )
+    )
 }
 
 @Composable
