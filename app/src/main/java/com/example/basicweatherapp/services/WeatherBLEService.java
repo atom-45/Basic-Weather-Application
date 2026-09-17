@@ -5,6 +5,7 @@ import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -14,6 +15,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Binder;
 import android.os.Build;
@@ -23,12 +25,19 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.example.basicweatherapp.R;
 import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.repositories.SensorDataRepository;
 import com.example.basicweatherapp.di.application.WeatherApplication;
+import com.example.basicweatherapp.physics.DewPointCalculator;
+import com.example.basicweatherapp.physics.RainAnalysisEngine;
+import com.example.basicweatherapp.physics.StormReport;
+import com.example.basicweatherapp.physics.StormThermodynamicsEngine;
+import com.example.basicweatherapp.presentation.activities.MainActivity;
 import com.example.basicweatherapp.utilities.Constants;
 
 import java.nio.ByteBuffer;
@@ -40,6 +49,11 @@ import java.util.UUID;
 
 import javax.inject.Inject;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+
 @SuppressLint("MissingPermission")
 public class WeatherBLEService extends Service {
 
@@ -47,6 +61,9 @@ public class WeatherBLEService extends Service {
 
     private static final int NOTIFICATION_ID = 203;
     private static final String CHANNEL_ID = "WeatherBLEServiceChannel";
+    private static final String ALERT_CHANNEL_ID = "WeatherAlertChannel";
+    private static final int ALERT_NOTIFICATION_ID = 204;
+    
     public final static String ACTION_GATT_CONNECTED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
@@ -61,6 +78,7 @@ public class WeatherBLEService extends Service {
     private final Binder binder = new LocalBinder();
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothGatt bluetoothGatt;
+    private final CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Inject
     SensorDataRepository sensorDataRepository;
@@ -157,10 +175,14 @@ public class WeatherBLEService extends Service {
 
             if(sensorDataRepository != null) {
                 Log.d(TAG, "onCharacteristicChanged: Sensor Repository is not null");
-                sensorDataRepository.insert(sensorData)
-                        .doOnComplete(()->Log.d(TAG, "SUCCESS: Sensor data inserted into Room database."))
+                Disposable disposable = sensorDataRepository.insert(sensorData)
+                        .doOnComplete(() -> {
+                            Log.d(TAG, "SUCCESS: Sensor data inserted into Room database.");
+                            performAtmosphericAnalysis();
+                        })
                         .doOnError(throwable -> Log.e(TAG, "ERROR: Failed to insert sensor data", throwable ))
                         .subscribe();
+                compositeDisposable.add(disposable);
             }
 
             Log.d(TAG, "onCharacteristicChanged: "+sensorData);
@@ -187,23 +209,91 @@ public class WeatherBLEService extends Service {
         //this.sensorDataRepository = new SensorDataRepository((Application) getApplication());
     }
 
-    private Notification createNotification(String title, String text)
+    private void createNotificationChannels()
     {
         NotificationChannel serviceChannel = new NotificationChannel(CHANNEL_ID,
                 "Weather Sensor Service", NotificationManager.IMPORTANCE_LOW);
-
         serviceChannel.setDescription("Keeps the Bluetooth sensor connection active.");
+
+        NotificationChannel alertChannel = new NotificationChannel(ALERT_CHANNEL_ID,
+                "Weather Alerts", NotificationManager.IMPORTANCE_HIGH);
+        alertChannel.setDescription("Notifications for approaching storms and rain.");
+        alertChannel.enableVibration(true);
+
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager != null) {
             manager.createNotificationChannel(serviceChannel);
+            manager.createNotificationChannel(alertChannel);
         }
+    }
 
+    private Notification createNotification(String title, String text)
+    {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setSmallIcon(R.drawable.sunny)
                 .setOngoing(true)
                 .build();
+    }
+
+    private void performAtmosphericAnalysis() {
+        Disposable disposable = sensorDataRepository.getLastTwoEntries()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .take(1)
+                .subscribe(list -> {
+                    if (list.size() < 2) return;
+
+                    SensorData prev = list.get(1); // DESC order, so index 1 is older
+                    SensorData current = list.get(0); // index 0 is newest
+
+                    // 1. Thermodynamic Analysis
+                    StormReport thermoReport = StormThermodynamicsEngine.analyze(prev, current);
+
+                    // 2. Static Rain Analysis
+                    float dewPoint = (float) DewPointCalculator.calculate(current.getTemperature(), current.getHumidity());
+                    boolean rainLikely = RainAnalysisEngine.isLikely(current.getTemperature(), dewPoint);
+                    String rainPrediction = RainAnalysisEngine.predict(current.getTemperature(), dewPoint);
+
+                    // 3. Combined Logic for Notification
+                    if (!thermoReport.isSafeToWalk() || rainLikely) {
+                        String title = "Weather Alert: Storm Approaching";
+                        String content = thermoReport.isSafeToWalk() ? 
+                                "Rain expected: " + rainPrediction : 
+                                thermoReport.statusMessage();
+                        
+                        sendWeatherAlert(title, content);
+                    }
+                }, throwable -> Log.e(TAG, "Error during atmospheric analysis", throwable));
+        compositeDisposable.add(disposable);
+    }
+
+    private void sendWeatherAlert(String title, String content) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        
+        // Use direct navigation to the sensor screen if possible, but MainActivity handles routing
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 
+                PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+                .setSmallIcon(R.drawable.rain_2)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, "Notification permission missing for alert");
+                return;
+            }
+        }
+        notificationManager.notify(ALERT_NOTIFICATION_ID, builder.build());
     }
     
     public boolean initialize()
@@ -365,12 +455,20 @@ public class WeatherBLEService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        createNotificationChannels();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, createNotification("Weather Sensor Connecting", "Attempting to connect to BLE sensor..."), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
         } else {
             startForeground(NOTIFICATION_ID, createNotification("Weather Sensor Connecting", "Attempting to connect to BLE sensor..."));
         }
         return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        close();
+        compositeDisposable.clear();
     }
 
     @Override

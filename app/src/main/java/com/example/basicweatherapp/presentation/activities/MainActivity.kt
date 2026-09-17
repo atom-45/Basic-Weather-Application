@@ -261,15 +261,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkPermissionsAndStartBT() {
-        val permissions = mutableListOf(
-            Manifest.permission.BLUETOOTH_CONNECT,
-            Manifest.permission.BLUETOOTH_ADMIN,
-            Manifest.permission.BLUETOOTH_ADVERTISE,
-            Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+        val permissions = mutableListOf<String>()
 
+        // Bluetooth Permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            permissions.add(Manifest.permission.BLUETOOTH)
+            permissions.add(Manifest.permission.BLUETOOTH_ADMIN)
+        }
+
+        // Location Permissions (Required for BLE scanning on older versions)
+        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        // Notification Permissions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -280,8 +287,12 @@ class MainActivity : ComponentActivity() {
 
         if (missingPermissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), REQUEST_ENABLE_BT)
+        } else {
+            startBluetoothOperations()
         }
+    }
 
+    private fun startBluetoothOperations() {
         bluetoothManager = getSystemService(BluetoothManager::class.java)
         bluetoothAdapter = bluetoothManager?.adapter
 
@@ -289,10 +300,27 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Bluetooth is not supported", Toast.LENGTH_SHORT).show()
         } else {
             if (!bluetoothAdapter!!.isEnabled) {
-                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                startActivity(enableBtIntent)
+                try {
+                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    startActivity(enableBtIntent)
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "SecurityException while enabling BT: ${e.message}")
+                }
+            } else {
+                scanBLEDevice()
             }
-            scanBLEDevice()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_ENABLE_BT) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                startBluetoothOperations()
+            } else {
+                Toast.makeText(this, "Permissions required for weather sensor features", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

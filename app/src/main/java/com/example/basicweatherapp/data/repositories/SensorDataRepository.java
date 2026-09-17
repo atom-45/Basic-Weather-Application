@@ -36,6 +36,10 @@ public class SensorDataRepository {
         return sensorDAO.getSensorDataByRange(startDate, endDate);
     }
 
+    public Observable<List<SensorData>> getLastTwoEntries() {
+        return sensorDAO.getLastTwoEntries();
+    }
+
     public Completable insertSensorData(SensorData sensorData){
         return sensorDAO.insertSensorData(sensorData);
     }

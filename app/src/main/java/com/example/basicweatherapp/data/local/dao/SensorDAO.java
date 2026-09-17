@@ -22,6 +22,9 @@ public interface SensorDAO {
     @Query("SELECT * FROM sensor_data WHERE date >= :startDate AND date <= :endDate ORDER BY date ASC")
     List<SensorData> getSensorDataByRange(String startDate, String endDate);
 
+    @Query("SELECT * FROM sensor_data ORDER BY id DESC LIMIT 2")
+    Observable<List<SensorData>> getLastTwoEntries();
+
     @Insert(onConflict = OnConflictStrategy.NONE)
     Completable insertSensorData(SensorData sensorData);
 }
