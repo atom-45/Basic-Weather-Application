@@ -17,16 +17,19 @@ The Basic Weather App is a comprehensive weather monitoring solution that integr
 - **Dagger 2:** Handles dependency injection for ViewModels and Repositories.
 
 ### Data Layer
-- **Local Persistence (Room - Version 5):** Stores user profiles, saved locations, sensor data history, cached weather forecasts, and **expanded prediction verifications** (including thermodynamic residuals).
+- **Local Persistence (Room - Version 6):** Stores user profiles, saved locations, sensor data history, cached weather forecasts, and the **Thermodynamic Black Box** (prediction snapshots and event-grouped verifications).
 - **Remote API (Retrofit):** Fetches global weather data from WeatherAPI.com.
-- **BLE Service:** `WeatherBLEService` handles real-time data acquisition. Optimized for **Arduino Nano RP2040 Connect**.
+- **BLE Service:** `WeatherBLEService` handles real-time data acquisition and **Background Atmospheric Analysis** with high-priority notifications.
 
 ### Thermodynamic Analysis Engine (physics/)
 - **Theoretical Basis:** Implements the First Law of Thermodynamics ($dT/dt = \frac{1}{\rho c_p} \frac{dp}{dt} + \frac{J}{c_p}$) to analyze local air parcels.
 - **Numerical Methods:** Uses **Backward Difference** for tendency calculation and **Forward Euler** for rain arrival time projection.
+- **Black Box Audit System:** Automatically records the engine's "Intent" (predictions) alongside exact sensor snapshots. 
+- **Event Grouping:** Groups sequential 10-minute predictions into a single "Storm Event" to capture the build-up phase and minimize user verification fatigue.
 - **Core Components:**
     - `DensityCalculator`: Dynamic $\rho$ calculation with virtual temperature correction.
     - `StormThermodynamicsEngine`: Solves the DE to detect atmospheric energy anomalies (residuals).
+    - `RainAnalysisEngine`: Centralized logic for static dew-point-based saturation thresholds.
     - `DewPointCalculator`: Magnus-Tetens approximation for saturation thresholds.
 
 ## Core Screens
@@ -38,8 +41,9 @@ The Basic Weather App is a comprehensive weather monitoring solution that integr
 
 ### 2. Sensor Display Screen (`SensorDisplayScreen.kt`)
 - **Bento Grid:** Displays real-time Temperature, Humidity, Pressure, and Altitude from the BLE sensor.
-- **Thermodynamic Analysis Section:** Displays storm approach speed, exact arrival timestamps (e.g., "16:45"), and safety verdicts.
-- **Verification Loop:** Integrated horizontal chip row for ground-truth reporting (Heavy Rain, Clear, etc.).
+- **Thermodynamic Analysis Section:** Displays storm approach speed, exact arrival timestamps, and safety verdicts.
+- **Live Model Audit Card:** A dynamic component that appears during a prediction's 10-minute arrival window to request ground-truth verification.
+- **Verification Loop:** Integrated horizontal chip row for ground-truth reporting (Heavy Rain, Clear, etc.) with back-propagation to event groups.
 - **Interactive Trends:** MPAndroidChart auto-updates with new sensor data. Supports historical data viewing up to 5 hours.
 
 ### 3. Rain Analysis Bottom Sheet

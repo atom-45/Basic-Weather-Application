@@ -31,6 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.basicweatherapp.R
 import com.example.basicweatherapp.data.models.PredictionVerification
 import com.example.basicweatherapp.data.models.SensorData
+import com.example.basicweatherapp.data.models.ThermodynamicPrediction
 import com.example.basicweatherapp.physics.StormReport
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import com.example.basicweatherapp.presentation.theme.BasicWeatherAppTheme
@@ -42,6 +43,7 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.time.Instant
 import java.time.LocalDateTime
@@ -57,7 +59,15 @@ fun SensorDisplayScreen(
 ) {
     val sensorDataList by sensorDataViewModel.allSensorData.subscribeAsState(initial = emptyList())
     val stormReport by sensorDataViewModel.stormAnalysis.subscribeAsState(initial = null)
+    val unverifiedPredictions by sensorDataViewModel.getUnverifiedPredictions().subscribeAsState(initial = emptyList())
     
+    val compositeDisposable = remember { CompositeDisposable() }
+    DisposableEffect(Unit) {
+        onDispose {
+            compositeDisposable.clear()
+        }
+    }
+
     var selectedDataType by remember { mutableStateOf("Temperature") }
     var selectedPeriod by remember { mutableStateOf("10 minutes") }
     var chartData by remember { mutableStateOf<LineData?>(null) }
@@ -74,6 +84,7 @@ fun SensorDisplayScreen(
     SensorDisplayContent(
         sensorDataList = sensorDataList,
         stormReport = stormReport,
+        unverifiedPredictions = unverifiedPredictions,
         selectedDataType = selectedDataType,
         onDataTypeChange = { selectedDataType = it },
         selectedPeriod = selectedPeriod,
@@ -87,10 +98,20 @@ fun SensorDisplayScreen(
         onBackClick = onBackClick,
         onRainPredictionClick = onRainPredictionClick,
         onVerificationSubmit = { verification ->
-            sensorDataViewModel.insertVerification(verification)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe()
+            compositeDisposable.add(
+                sensorDataViewModel.insertVerification(verification)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe()
+            )
+        },
+        onAuditSubmit = { eventId, outcome ->
+            compositeDisposable.add(
+                sensorDataViewModel.verifyPrediction(eventId, outcome)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe()
+            )
         }
     )
 }
@@ -100,6 +121,7 @@ fun SensorDisplayScreen(
 fun SensorDisplayContent(
     sensorDataList: List<SensorData>,
     stormReport: StormReport?,
+    unverifiedPredictions: List<ThermodynamicPrediction>,
     selectedDataType: String,
     onDataTypeChange: (String) -> Unit,
     selectedPeriod: String,
@@ -110,7 +132,8 @@ fun SensorDisplayContent(
     onExportClick: (String, String) -> Unit,
     onBackClick: () -> Unit,
     onRainPredictionClick: () -> Unit,
-    onVerificationSubmit: (PredictionVerification) -> Unit
+    onVerificationSubmit: (PredictionVerification) -> Unit,
+    onAuditSubmit: (String, String) -> Unit
 ) {
     val periods = listOf("10 minutes", "30 minutes", "60 minutes", "120 minutes", "150 minutes", "180 minutes", "240 minutes", "300 minutes")
     val dataTypes = listOf("Temperature", "Humidity", "Pressure")
@@ -296,6 +319,17 @@ fun SensorDisplayContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Black Box Audit Card - Appears during active window
+            val activePrediction = unverifiedPredictions.firstOrNull { 
+                val now = System.currentTimeMillis()
+                now in it.windowStartMillis..it.windowEndMillis
+            }
+            
+            activePrediction?.let { prediction ->
+                AuditCard(prediction, onAuditSubmit)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Thermodynamic Verification Section
             if (stormReport != null && !stormReport.isSafeToWalk) {
@@ -556,6 +590,67 @@ fun SensorDisplayContent(
 }
 
 @Composable
+fun AuditCard(
+    prediction: ThermodynamicPrediction,
+    onVerify: (String, String) -> Unit
+) {
+    var feedbackSubmitted by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.25f)),
+        border = BorderStroke(2.dp, Color.White.copy(alpha = 0.4f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.baseline_add_circle_outline_24), // Needs appropriate icon
+                    contentDescription = null,
+                    tint = Color.Yellow,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Live Model Audit",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = Muli
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = if (feedbackSubmitted) "Audit complete. Energy model calibrated." 
+                       else "At ${prediction.originalTimestamp.substring(11, 16)}, physics predicted arrival at ${prediction.predictedArrival}. What is the actual status?",
+                color = Color.White.copy(alpha = 0.9f),
+                fontSize = 14.sp,
+                fontFamily = Muli
+            )
+
+            if (!feedbackSubmitted) {
+                Spacer(modifier = Modifier.height(16.dp))
+                val outcomes = listOf("Heavy Rain", "Light Rain", "Cloudy", "Windy", "Lightning", "Clear")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(outcomes) { outcome ->
+                        AssistChip(
+                            onClick = {
+                                onVerify(prediction.stormEventId, outcome)
+                                feedbackSubmitted = true
+                            },
+                            label = { Text(outcome, fontSize = 11.sp, color = Color.White) },
+                            colors = AssistChipDefaults.assistChipColors(containerColor = Color.White.copy(alpha = 0.1f))
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ThermoFeedbackChip(
     outcome: String,
     report: StormReport,
@@ -674,6 +769,7 @@ fun SensorDisplayScreenPreview() {
         SensorDisplayContent(
             sensorDataList = emptyList(),
             stormReport = null,
+            unverifiedPredictions = emptyList(),
             selectedDataType = "Temperature",
             onDataTypeChange = {},
             selectedPeriod = "10 minutes",
@@ -684,7 +780,8 @@ fun SensorDisplayScreenPreview() {
             onExportClick = { _, _ -> },
             onBackClick = {},
             onRainPredictionClick = {},
-            onVerificationSubmit = {}
+            onVerificationSubmit = {},
+            onAuditSubmit = { _, _ -> }
         )
     }
 }

@@ -18,6 +18,7 @@ import com.example.basicweatherapp.R
 import com.example.basicweatherapp.data.local.database.WeatherDatabase
 import com.example.basicweatherapp.data.models.PredictionVerification
 import com.example.basicweatherapp.data.models.SensorData
+import com.example.basicweatherapp.data.models.ThermodynamicPrediction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -52,8 +53,9 @@ class ExportWorker(
             val db = WeatherDatabase.getInstance(applicationContext)
             val sensorData = db.sensorDAO().getSensorDataByRange(startDate, endDate)
             val verifications = db.predictionVerificationDAO().getVerificationsByRange(startDate, endDate)
+            val thermoPredictions = db.thermodynamicPredictionDAO().getPredictionsByRange(startDate, endDate)
 
-            if (sensorData.isEmpty() && verifications.isEmpty()) {
+            if (sensorData.isEmpty() && verifications.isEmpty() && thermoPredictions.isEmpty()) {
                 showNotification("Export Failed", "No data found for the selected range.")
                 return@withContext Result.failure()
             }
@@ -61,6 +63,7 @@ class ExportWorker(
             val cacheDir = applicationContext.cacheDir
             val sensorFile = File(cacheDir, "raw_sensor_data.csv")
             val verifFile = File(cacheDir, "labeled_verifications.csv")
+            val thermoFile = File(cacheDir, "thermodynamic_blackbox.csv")
             val zipFile = File(cacheDir, "weather_export_${startDate.substring(0, 10)}.zip")
 
             // Write Sensor Data CSV
@@ -83,10 +86,23 @@ class ExportWorker(
                 }
             }
 
+            // Write Thermodynamic Predictions CSV
+            FileOutputStream(thermoFile).use { out ->
+                out.write("Timestamp,Temp,Humidity,Pressure,PredictedArrival,Speed,Residual,EventID,Status,ActualOutcome\n".toByteArray())
+                thermoPredictions.forEach { p ->
+                    val row = String.format(Locale.ENGLISH, "%s,%.2f,%.2f,%.2f,%s,%.2f,%.2f,%s,%s,%s\n",
+                        p.originalTimestamp, p.temperature, p.humidity, p.pressure, 
+                        p.predictedArrival, p.stormSpeed, p.residual, p.stormEventId, 
+                        p.verificationStatus, p.actualOutcome ?: "N/A")
+                    out.write(row.toByteArray())
+                }
+            }
+
             // Create Zip
             ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
                 addToZip(zos, sensorFile)
                 addToZip(zos, verifFile)
+                addToZip(zos, thermoFile)
             }
 
             saveToDownloads(zipFile)

@@ -31,7 +31,9 @@ import androidx.core.app.NotificationManagerCompat;
 
 import com.example.basicweatherapp.R;
 import com.example.basicweatherapp.data.models.SensorData;
+import com.example.basicweatherapp.data.models.ThermodynamicPrediction;
 import com.example.basicweatherapp.data.repositories.SensorDataRepository;
+import com.example.basicweatherapp.data.repositories.ThermodynamicPredictionRepository;
 import com.example.basicweatherapp.di.application.WeatherApplication;
 import com.example.basicweatherapp.physics.DewPointCalculator;
 import com.example.basicweatherapp.physics.RainAnalysisEngine;
@@ -82,6 +84,9 @@ public class WeatherBLEService extends Service {
 
     @Inject
     SensorDataRepository sensorDataRepository;
+
+    @Inject
+    ThermodynamicPredictionRepository thermodynamicPredictionRepository;
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback()
     {
@@ -258,6 +263,8 @@ public class WeatherBLEService extends Service {
 
                     // 3. Combined Logic for Notification
                     if (!thermoReport.isSafeToWalk() || rainLikely) {
+                        saveThermodynamicEvent(current, thermoReport);
+
                         String title = "Weather Alert: Storm Approaching";
                         String content = thermoReport.isSafeToWalk() ? 
                                 "Rain expected: " + rainPrediction : 
@@ -266,6 +273,65 @@ public class WeatherBLEService extends Service {
                         sendWeatherAlert(title, content);
                     }
                 }, throwable -> Log.e(TAG, "Error during atmospheric analysis", throwable));
+        compositeDisposable.add(disposable);
+    }
+
+    private void saveThermodynamicEvent(SensorData current, StormReport report) {
+        Disposable disposable = thermodynamicPredictionRepository.getLatestPrediction()
+                .take(1)
+                .subscribe(latest -> {
+                    String eventId;
+                    long now = System.currentTimeMillis();
+                    
+                    // Grouping Logic: 30-minute threshold
+                    if (latest != null && latest.getVerificationStatus().equals("PENDING")) {
+                         eventId = latest.getStormEventId();
+                    } else {
+                        eventId = "EVT_" + now;
+                    }
+
+                    // Window: arrival ± 5 minutes
+                    long arrivalMillis = now + (long)(report.arrivalTimeMinutes() * 60 * 1000);
+                    long windowStart = arrivalMillis - (5 * 60 * 1000);
+                    long windowEnd = arrivalMillis + (5 * 60 * 1000);
+
+                    ThermodynamicPrediction prediction = new ThermodynamicPrediction(
+                            current.getDate(),
+                            current.getTemperature(),
+                            current.getHumidity(),
+                            current.getPressure(),
+                            report.arrivalTimestamp(),
+                            report.stormSpeedKmh(),
+                            report.thermodynamicResidual(),
+                            windowStart,
+                            windowEnd,
+                            "PENDING",
+                            eventId
+                    );
+
+                    compositeDisposable.add(
+                        thermodynamicPredictionRepository.insert(prediction).subscribe()
+                    );
+                }, throwable -> {
+                    // Fallback for first ever prediction
+                    String eventId = "EVT_" + System.currentTimeMillis();
+                    ThermodynamicPrediction prediction = new ThermodynamicPrediction(
+                            current.getDate(),
+                            current.getTemperature(),
+                            current.getHumidity(),
+                            current.getPressure(),
+                            report.arrivalTimestamp(),
+                            report.stormSpeedKmh(),
+                            report.thermodynamicResidual(),
+                            System.currentTimeMillis() + 10 * 60 * 1000, // Default window
+                            System.currentTimeMillis() + 30 * 60 * 1000,
+                            "PENDING",
+                            eventId
+                    );
+                    compositeDisposable.add(
+                        thermodynamicPredictionRepository.insert(prediction).subscribe()
+                    );
+                });
         compositeDisposable.add(disposable);
     }
 

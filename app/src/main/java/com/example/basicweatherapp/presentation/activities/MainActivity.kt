@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -481,40 +482,36 @@ fun RainPredictionBottomSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var analysis by remember { mutableStateOf<RainAnalysis?>(null) }
+    val sensorDataList by sensorDataViewModel.allSensorData.subscribeAsState(initial = emptyList())
+    
+    val compositeDisposable = remember { CompositeDisposable() }
+    DisposableEffect(Unit) {
+        onDispose {
+            compositeDisposable.clear()
+        }
+    }
 
-    LaunchedEffect(Unit) {
-        sensorDataViewModel.allSensorData
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ allData ->
-                if (allData.isNotEmpty()) {
-                    // Logic: Use the most recent data available in the list
-                    // irrespective of whether it's today's data or previous days'.
-                    val current = allData.last()
-                    
-                    // Filter data points from the same day as the last available record to calculate trends
-                    val lastRecordDate = current.date.substring(0, 10)
-                    val relevantData = allData.filter { it.date.startsWith(lastRecordDate) }
-                    
-                    val pressureTrends = calculatePressureTrends(relevantData)
-                    val dewPoint = calculateDewPoint(current.temperature, current.humidity)
-                    val prediction = predictRain(current.temperature, dewPoint)
-                    
-                    analysis = RainAnalysis(
-                        prediction = prediction,
-                        spread = current.temperature - dewPoint,
-                        dewPoint = dewPoint,
-                        trends = pressureTrends,
-                        lastUpdated = current.date,
-                        temp = current.temperature,
-                        humidity = current.humidity,
-                        pressure = current.pressure
-                    )
-                }
-            }, {
-                Log.e("RainPrediction", "Error loading data", it)
-            })
+    val analysis = remember(sensorDataList) {
+        if (sensorDataList.isNotEmpty()) {
+            val current = sensorDataList.last()
+            val lastRecordDate = current.date.substring(0, 10)
+            val relevantData = sensorDataList.filter { it.date.startsWith(lastRecordDate) }
+            
+            val pressureTrends = calculatePressureTrends(relevantData)
+            val dewPoint = calculateDewPoint(current.temperature, current.humidity)
+            val prediction = predictRain(current.temperature, dewPoint)
+            
+            RainAnalysis(
+                prediction = prediction,
+                spread = current.temperature - dewPoint,
+                dewPoint = dewPoint,
+                trends = pressureTrends,
+                lastUpdated = current.date,
+                temp = current.temperature,
+                humidity = current.humidity,
+                pressure = current.pressure
+            )
+        } else null
     }
 
     var feedbackSubmitted by remember { mutableStateOf(false) }
@@ -596,7 +593,7 @@ fun RainPredictionBottomSheet(
                     ) {
                         val outcomes = listOf("Heavy Rain", "Light Rain", "Cloudy", "Windy", "Lightning", "Clear")
                         items(outcomes) { outcome ->
-                            PredictionChip(outcome, analysis!!, sensorDataViewModel) { feedbackSubmitted = true }
+                            PredictionChip(outcome, analysis!!, sensorDataViewModel, compositeDisposable) { feedbackSubmitted = true }
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
@@ -647,6 +644,7 @@ fun PredictionChip(
     outcome: String,
     analysis: RainAnalysis,
     sensorDataViewModel: SensorDataViewModel,
+    compositeDisposable: CompositeDisposable,
     onSuccess: () -> Unit
 ) {
     AssistChip(
@@ -661,14 +659,16 @@ fun PredictionChip(
                 0.0, // No residual for static rain prediction
                 "STATIC_THRESHOLD"
             )
-            sensorDataViewModel.insertVerification(verification)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({
-                    onSuccess()
-                }, {
-                    Log.e("RainPrediction", "Error saving feedback", it)
-                })
+            compositeDisposable.add(
+                sensorDataViewModel.insertVerification(verification)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({
+                        onSuccess()
+                    }, {
+                        Log.e("RainPrediction", "Error saving feedback", it)
+                    })
+            )
         },
         label = { Text(outcome, fontFamily = Muli, fontSize = 12.sp) },
         modifier = Modifier.width(100.dp),

@@ -8,8 +8,10 @@ import androidx.lifecycle.ViewModel;
 
 import com.example.basicweatherapp.data.models.PredictionVerification;
 import com.example.basicweatherapp.data.models.SensorData;
+import com.example.basicweatherapp.data.models.ThermodynamicPrediction;
 import com.example.basicweatherapp.data.repositories.PredictionVerificationRepository;
 import com.example.basicweatherapp.data.repositories.SensorDataRepository;
+import com.example.basicweatherapp.data.repositories.ThermodynamicPredictionRepository;
 import com.example.basicweatherapp.di.application.WeatherApplication;
 import com.example.basicweatherapp.physics.StormReport;
 import com.example.basicweatherapp.physics.StormThermodynamicsEngine;
@@ -30,13 +32,18 @@ public class SensorDataViewModel extends ViewModel {
 
     private final SensorDataRepository sensorDataRepository;
     private final PredictionVerificationRepository predictionVerificationRepository;
+    private final ThermodynamicPredictionRepository thermodynamicPredictionRepository;
     private final Application application;
 
 
     @Inject
-    public SensorDataViewModel(SensorDataRepository sensorDataRepository, PredictionVerificationRepository predictionVerificationRepository, Application application) {
+    public SensorDataViewModel(SensorDataRepository sensorDataRepository, 
+                               PredictionVerificationRepository predictionVerificationRepository,
+                               ThermodynamicPredictionRepository thermodynamicPredictionRepository,
+                               Application application) {
         this.sensorDataRepository = sensorDataRepository;
         this.predictionVerificationRepository = predictionVerificationRepository;
+        this.thermodynamicPredictionRepository = thermodynamicPredictionRepository;
         this.application = application;
     }
 
@@ -57,6 +64,17 @@ public class SensorDataViewModel extends ViewModel {
                     SensorData current = list.get(list.size() - 1);
                     return StormThermodynamicsEngine.analyze(prev, current);
                 });
+    }
+
+    /**
+     * Exposes all unverified predictions that are currently in their "Audit Window" or PENDING.
+     */
+    public Observable<List<ThermodynamicPrediction>> getUnverifiedPredictions() {
+        return thermodynamicPredictionRepository.getUnverifiedPredictions();
+    }
+
+    public Completable verifyPrediction(String eventId, String outcome) {
+        return thermodynamicPredictionRepository.verifyEventGroup(eventId, outcome);
     }
 
     public Completable insertSensorData(SensorData sensorData){

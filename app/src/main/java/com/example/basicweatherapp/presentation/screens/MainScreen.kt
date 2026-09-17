@@ -50,6 +50,7 @@ import com.example.basicweatherapp.presentation.viewmodels.PlaceViewModel
 import com.example.basicweatherapp.presentation.viewmodels.UserViewModel
 import com.example.basicweatherapp.presentation.viewmodels.WeatherViewModel
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.time.LocalDate
 import java.time.LocalTime
@@ -76,7 +77,13 @@ fun MainScreen(
     var isEditingName by remember { mutableStateOf(false) }
     var editedName by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val compositeDisposable = remember { CompositeDisposable() }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            compositeDisposable.clear()
+        }
+    }
     
     val savedPlacesState = placeViewModel.allPlaces.subscribeAsState(initial = emptyList())
     val savedPlaces = savedPlacesState.value
@@ -84,7 +91,7 @@ fun MainScreen(
     // Safe Search Implementation: Automatically cancels stale searches
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotEmpty()) {
-            weatherViewModel.getPlaces(searchQuery)
+            val searchDisposable = weatherViewModel.getPlaces(searchQuery)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ places ->
@@ -92,6 +99,7 @@ fun MainScreen(
                 }, {
                     searchResults = emptyList()
                 })
+            compositeDisposable.add(searchDisposable)
         } else {
             searchResults = emptyList()
         }
@@ -178,9 +186,11 @@ fun MainScreen(
                                     val dismissState = rememberSwipeToDismissBoxState(
                                         confirmValueChange = {
                                             if (it == SwipeToDismissBoxValue.EndToStart) {
-                                                placeViewModel.deletePlace(place)
-                                                    .subscribeOn(Schedulers.io())
-                                                    .subscribe()
+                                                compositeDisposable.add(
+                                                    placeViewModel.deletePlace(place)
+                                                        .subscribeOn(Schedulers.io())
+                                                        .subscribe()
+                                                )
                                                 true
                                             } else false
                                         }
@@ -208,9 +218,11 @@ fun MainScreen(
                                         searchQuery = ""
                                         isSearchActive = false
                                         // Save new location
-                                        placeViewModel.addPlace(place)
-                                            .subscribeOn(Schedulers.io())
-                                            .subscribe()
+                                        compositeDisposable.add(
+                                            placeViewModel.addPlace(place)
+                                                .subscribeOn(Schedulers.io())
+                                                .subscribe()
+                                        )
                                     }
                                 }
                             }
@@ -255,15 +267,17 @@ fun MainScreen(
                 onNameChange = { editedName = it },
                 onSaveName = {
                     if (editedName.isNotEmpty()) {
-                        userViewModel.insertUser(User(editedName))
-                            .subscribeOn(Schedulers.io())
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe({
-                                isEditingName = false
-                                Toast.makeText(context, "Welcome, $editedName!", Toast.LENGTH_SHORT).show()
-                            }, {
-                                Toast.makeText(context, "Error saving name", Toast.LENGTH_SHORT).show()
-                            })
+                        compositeDisposable.add(
+                            userViewModel.insertUser(User(editedName))
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe({
+                                    isEditingName = false
+                                    Toast.makeText(context, "Welcome, $editedName!", Toast.LENGTH_SHORT).show()
+                                }, {
+                                    Toast.makeText(context, "Error saving name", Toast.LENGTH_SHORT).show()
+                                })
+                        )
                     }
                 }
             )
