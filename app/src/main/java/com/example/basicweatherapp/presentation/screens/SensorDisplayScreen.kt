@@ -427,21 +427,37 @@ fun SensorDisplayContent(
                             onExpandedChange = { expanded = !expanded },
                             modifier = Modifier.weight(0.8f)
                         ) {
-                            OutlinedTextField(
-                                value = selectedPeriod,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Period", color = Color.White.copy(alpha = 0.7f)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color.White.copy(alpha = 0.5f),
-                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            Box(modifier = Modifier.menuAnchor()) {
+                                OutlinedTextField(
+                                    value = selectedPeriod,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Period", color = Color.White.copy(alpha = 0.7f)) },
+                                    trailingIcon = { 
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) 
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        disabledTextColor = Color.White,
+                                        focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                        disabledBorderColor = Color.White.copy(alpha = 0.3f),
+                                        focusedLabelColor = Color.White.copy(alpha = 0.7f),
+                                        unfocusedLabelColor = Color.White.copy(alpha = 0.7f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                
+                                // Transparent overlay to ensure click is caught
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable { expanded = !expanded }
+                                )
+                            }
+
                             ExposedDropdownMenu(
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false }
@@ -452,7 +468,8 @@ fun SensorDisplayContent(
                                         onClick = {
                                             onPeriodChange(period)
                                             expanded = false
-                                        }
+                                        },
+                                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
                                     )
                                 }
                             }
@@ -475,26 +492,39 @@ fun SensorDisplayContent(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    AndroidView(
-                        factory = { ctx ->
-                            LineChart(ctx).apply {
-                                setDrawGridBackground(false)
-                                description.isEnabled = false
-                                xAxis.setDrawGridLines(false)
-                                xAxis.textColor = android.graphics.Color.WHITE
-                                axisLeft.textColor = android.graphics.Color.WHITE
-                                axisRight.isEnabled = false
-                                legend.textColor = android.graphics.Color.WHITE
-                            }
-                        },
-                        update = { chart ->
-                            chart.data = chartData
-                            chart.invalidate()
-                        },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(280.dp)
-                    )
+                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                    ) {
+                        AndroidView(
+                            factory = { ctx ->
+                                try {
+                                    LineChart(ctx).apply {
+                                        setDrawGridBackground(false)
+                                        description.isEnabled = false
+                                        xAxis.setDrawGridLines(false)
+                                        xAxis.textColor = android.graphics.Color.WHITE
+                                        axisLeft.textColor = android.graphics.Color.WHITE
+                                        axisRight.isEnabled = false
+                                        legend.textColor = android.graphics.Color.WHITE
+                                        setNoDataText("Awaiting plot command...")
+                                        setNoDataTextColor(android.graphics.Color.WHITE)
+                                    }
+                                } catch (e: Exception) {
+                                    android.view.View(ctx) // Fallback to empty view on failure
+                                }
+                            },
+                            update = { chart ->
+                                if (chart is LineChart) {
+                                    chart.data = chartData
+                                    chart.invalidate()
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
