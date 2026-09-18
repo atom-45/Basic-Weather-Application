@@ -29,7 +29,7 @@ public class ThermodynamicPredictionRepository {
         return dao.insert(prediction).subscribeOn(Schedulers.io());
     }
 
-    public Observable<ThermodynamicPrediction> getLatestPrediction() {
+    public Observable<List<ThermodynamicPrediction>> getLatestPrediction() {
         return dao.getLatestPrediction().subscribeOn(Schedulers.io());
     }
 

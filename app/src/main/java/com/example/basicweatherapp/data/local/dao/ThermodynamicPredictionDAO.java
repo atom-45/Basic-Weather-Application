@@ -19,7 +19,7 @@ public interface ThermodynamicPredictionDAO {
     Completable insert(ThermodynamicPrediction prediction);
 
     @Query("SELECT * FROM thermodynamic_predictions ORDER BY id DESC LIMIT 1")
-    Observable<ThermodynamicPrediction> getLatestPrediction();
+    Observable<List<ThermodynamicPrediction>> getLatestPrediction();
 
     @Query("SELECT * FROM thermodynamic_predictions WHERE verification_status = 'PENDING' OR verification_status = 'ACTIVE' ORDER BY id DESC")
     Observable<List<ThermodynamicPrediction>> getUnverifiedPredictions();

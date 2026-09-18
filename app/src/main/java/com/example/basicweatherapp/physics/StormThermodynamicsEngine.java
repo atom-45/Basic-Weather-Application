@@ -80,7 +80,13 @@ public final class StormThermodynamicsEngine {
                     arrivalTimeMins = (tempGap / Math.abs(coolingRate)) / 60.0;
                     // Project arrival timestamp
                     LocalDateTime arrivalTime = t2.plusMinutes((long) arrivalTimeMins);
-                    arrivalTimestamp = arrivalTime.format(DateTimeFormatter.ofPattern("HH:mm"));
+                    
+                    // Date-aware formatting
+                    if (arrivalTime.toLocalDate().isAfter(t2.toLocalDate())) {
+                        arrivalTimestamp = arrivalTime.format(DateTimeFormatter.ofPattern("MMM d, HH:mm"));
+                    } else {
+                        arrivalTimestamp = arrivalTime.format(DateTimeFormatter.ofPattern("HH:mm"));
+                    }
                 }
             }
 

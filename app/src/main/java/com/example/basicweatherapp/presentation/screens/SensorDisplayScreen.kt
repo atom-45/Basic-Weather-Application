@@ -624,7 +624,7 @@ fun AuditCard(
             
             Text(
                 text = if (feedbackSubmitted) "Audit complete. Energy model calibrated." 
-                       else "At ${prediction.originalTimestamp.substring(11, 16)}, physics predicted arrival at ${prediction.predictedArrival}. What is the actual status?",
+                       else "At ${prediction.originalTimestamp.substring(5, 16).replace("T", " ")}, physics predicted arrival at ${prediction.predictedArrival}. What is the actual status?",
                 color = Color.White.copy(alpha = 0.9f),
                 fontSize = 14.sp,
                 fontFamily = Muli

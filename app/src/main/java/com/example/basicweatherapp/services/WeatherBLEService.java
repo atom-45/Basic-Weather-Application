@@ -261,10 +261,11 @@ public class WeatherBLEService extends Service {
                     boolean rainLikely = RainAnalysisEngine.isLikely(current.getTemperature(), dewPoint);
                     String rainPrediction = RainAnalysisEngine.predict(current.getTemperature(), dewPoint);
 
+                    // Always save to Black Box for trend analysis and verification
+                    saveThermodynamicEvent(current, thermoReport);
+
                     // 3. Combined Logic for Notification
                     if (!thermoReport.isSafeToWalk() || rainLikely) {
-                        saveThermodynamicEvent(current, thermoReport);
-
                         String title = "Weather Alert: Storm Approaching";
                         String content = thermoReport.isSafeToWalk() ? 
                                 "Rain expected: " + rainPrediction : 
@@ -277,23 +278,39 @@ public class WeatherBLEService extends Service {
     }
 
     private void saveThermodynamicEvent(SensorData current, StormReport report) {
+        Log.d(TAG, "saveThermodynamicEvent: Attempting to save prediction...");
         Disposable disposable = thermodynamicPredictionRepository.getLatestPrediction()
+                .subscribeOn(Schedulers.io())
                 .take(1)
-                .subscribe(latest -> {
+                .subscribe(list -> {
                     String eventId;
                     long now = System.currentTimeMillis();
+                    ThermodynamicPrediction latest = (list == null || list.isEmpty()) ? null : list.get(0);
                     
-                    // Grouping Logic: 30-minute threshold
+                    // Grouping Logic: 30-minute threshold or same event if pending
                     if (latest != null && latest.getVerificationStatus().equals("PENDING")) {
                          eventId = latest.getStormEventId();
+                         Log.d(TAG, "saveThermodynamicEvent: Continuing existing event: " + eventId);
                     } else {
                         eventId = "EVT_" + now;
+                        Log.d(TAG, "saveThermodynamicEvent: Starting NEW storm event: " + eventId);
                     }
 
-                    // Window: arrival ± 5 minutes
-                    long arrivalMillis = now + (long)(report.arrivalTimeMinutes() * 60 * 1000);
-                    long windowStart = arrivalMillis - (5 * 60 * 1000);
-                    long windowEnd = arrivalMillis + (5 * 60 * 1000);
+                    // Window: arrival ± 5 minutes.
+                    double minsToArrival = report.arrivalTimeMinutes();
+                    long windowStart, windowEnd;
+                    
+                    if (minsToArrival > 0) {
+                        long arrivalMillis = now + (long)(minsToArrival * 60 * 1000);
+                        windowStart = arrivalMillis - (5 * 60 * 1000);
+                        windowEnd = arrivalMillis + (5 * 60 * 1000);
+                    } else {
+                        // If no arrival time (stable), we save the prediction for the Black Box
+                        // but we set the window in the far future or zero so it doesn't trigger 
+                        // the Audit Card immediately.
+                        windowStart = 0; 
+                        windowEnd = 0;
+                    }
 
                     ThermodynamicPrediction prediction = new ThermodynamicPrediction(
                             current.getDate(),
@@ -310,28 +327,12 @@ public class WeatherBLEService extends Service {
                     );
 
                     compositeDisposable.add(
-                        thermodynamicPredictionRepository.insert(prediction).subscribe()
+                        thermodynamicPredictionRepository.insert(prediction)
+                            .doOnComplete(() -> Log.d(TAG, "SUCCESS: Black Box prediction saved."))
+                            .doOnError(e -> Log.e(TAG, "ERROR: Failed to save Black Box prediction", e))
+                            .subscribe()
                     );
-                }, throwable -> {
-                    // Fallback for first ever prediction
-                    String eventId = "EVT_" + System.currentTimeMillis();
-                    ThermodynamicPrediction prediction = new ThermodynamicPrediction(
-                            current.getDate(),
-                            current.getTemperature(),
-                            current.getHumidity(),
-                            current.getPressure(),
-                            report.arrivalTimestamp(),
-                            report.stormSpeedKmh(),
-                            report.thermodynamicResidual(),
-                            System.currentTimeMillis() + 10 * 60 * 1000, // Default window
-                            System.currentTimeMillis() + 30 * 60 * 1000,
-                            "PENDING",
-                            eventId
-                    );
-                    compositeDisposable.add(
-                        thermodynamicPredictionRepository.insert(prediction).subscribe()
-                    );
-                });
+                }, throwable -> Log.e(TAG, "Error fetching latest prediction for grouping", throwable));
         compositeDisposable.add(disposable);
     }
 
