@@ -24,7 +24,7 @@ import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.models.ThermodynamicPrediction;
 import com.example.basicweatherapp.data.models.User;
 
-@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class, ThermodynamicPrediction.class}, version = 6, exportSchema = false)
+@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class, ThermodynamicPrediction.class}, version = 8, exportSchema = false)
 public abstract class WeatherDatabase extends RoomDatabase {
     private static volatile WeatherDatabase instance;
 
@@ -37,7 +37,7 @@ public abstract class WeatherDatabase extends RoomDatabase {
                if(instance==null){
                    instance = Room.databaseBuilder(context,WeatherDatabase.class,
                            "weather_database")
-                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                            .build();
                }
             }
@@ -99,6 +99,20 @@ public abstract class WeatherDatabase extends RoomDatabase {
                     "`verification_status` TEXT, " +
                     "`storm_event_id` TEXT, " +
                     "`actual_outcome` TEXT)");
+        }
+    };
+
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `thermodynamic_predictions` ADD COLUMN `verified_timestamp` TEXT");
+        }
+    };
+
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE `thermodynamic_predictions` ADD COLUMN `notified_45m` INTEGER NOT NULL DEFAULT 0");
         }
     };
 

@@ -27,8 +27,30 @@ public interface ThermodynamicPredictionDAO {
     @Query("UPDATE thermodynamic_predictions SET verification_status = :status, actual_outcome = :outcome WHERE storm_event_id = :eventId")
     Completable verifyEventGroup(String eventId, String status, String outcome);
 
+    @Query("UPDATE thermodynamic_predictions SET verification_status = :status, actual_outcome = :outcome, verified_timestamp = :verifiedTimestamp " +
+           "WHERE storm_event_id = :eventId " +
+           "AND verification_status = 'PENDING' " +
+           "AND window_start_millis <= :windowEnd " +
+           "AND window_end_millis >= :windowStart")
+    Completable verifyTargetedEventGroup(String eventId, String status, String outcome, String verifiedTimestamp, long windowStart, long windowEnd);
+
+    @Query("UPDATE thermodynamic_predictions SET verification_status = :status, actual_outcome = :outcome, verified_timestamp = :verifiedTimestamp WHERE id = :id")
+    Completable verifySinglePrediction(int id, String status, String outcome, String verifiedTimestamp);
+
     @Query("UPDATE thermodynamic_predictions SET verification_status = 'EXPIRED' WHERE window_end_millis < :currentTimeMillis AND verification_status = 'PENDING'")
     Completable markExpiredPredictions(long currentTimeMillis);
+
+    @Query("SELECT * FROM thermodynamic_predictions " +
+           "WHERE verification_status = 'PENDING' " +
+           "AND notified_45m = 0 " +
+           "AND window_start_millis > 0 " +
+           "AND (window_start_millis - 40 * 60 * 1000) <= :currentTimeMillis " +
+           "AND window_end_millis >= :currentTimeMillis " +
+           "ORDER BY id DESC")
+    List<ThermodynamicPrediction> getPredictionsNeeding45mAlert(long currentTimeMillis);
+
+    @Query("UPDATE thermodynamic_predictions SET notified_45m = 1 WHERE id = :id")
+    Completable mark45mAlertSent(int id);
     
     @Query("SELECT * FROM thermodynamic_predictions WHERE storm_event_id = :eventId ORDER BY id ASC")
     List<ThermodynamicPrediction> getPredictionsByEventId(String eventId);

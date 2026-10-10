@@ -77,6 +77,10 @@ public class SensorDataViewModel extends ViewModel {
         return thermodynamicPredictionRepository.verifyEventGroup(eventId, outcome);
     }
 
+    public Completable verifyPrediction(ThermodynamicPrediction prediction, String outcome) {
+        return thermodynamicPredictionRepository.verifyTargetedPrediction(prediction, outcome);
+    }
+
     public Completable insertSensorData(SensorData sensorData){
         return sensorDataRepository.insertSensorData(sensorData);
     }

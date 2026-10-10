@@ -47,11 +47,13 @@ import java.nio.ByteOrder;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import javax.inject.Inject;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -264,16 +266,57 @@ public class WeatherBLEService extends Service {
                     // Always save to Black Box for trend analysis and verification
                     saveThermodynamicEvent(current, thermoReport);
 
-                    // 3. Combined Logic for Notification
-                    if (!thermoReport.isSafeToWalk() || rainLikely) {
-                        String title = "Weather Alert: Storm Approaching";
+                    // Check for long-horizon predictions approaching the 45-minute mark
+                    checkPending45mAlerts();
+
+                    // 3. Notification Logic
+                    double arrivalMins = thermoReport.arrivalTimeMinutes();
+                    if (arrivalMins > 0 && arrivalMins <= 45) {
+                        // Dedicated 45-Minute Thermodynamic Early Warning
+                        String title = "Thermodynamic Warning: Rain Imminent";
+                        String content = String.format(Locale.ENGLISH,
+                                "Rain projected at %s (~%.0f min). Speed: %.1f km/h.",
+                                thermoReport.arrivalTimestamp(), arrivalMins, thermoReport.stormSpeedKmh());
+                        sendWeatherAlert(title, content);
+                    } else if (!thermoReport.isSafeToWalk() || rainLikely) {
+                        String title = "Weather Alert: Unstable Atmosphere";
                         String content = thermoReport.isSafeToWalk() ? 
                                 "Rain expected: " + rainPrediction : 
                                 thermoReport.statusMessage();
-                        
                         sendWeatherAlert(title, content);
                     }
                 }, throwable -> Log.e(TAG, "Error during atmospheric analysis", throwable));
+        compositeDisposable.add(disposable);
+    }
+
+    private void checkPending45mAlerts() {
+        long now = System.currentTimeMillis();
+        Disposable disposable = Observable.fromCallable(() -> 
+                thermodynamicPredictionRepository.getPredictionsNeeding45mAlert(now))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(list -> {
+                    if (list != null && !list.isEmpty()) {
+                        for (ThermodynamicPrediction p : list) {
+                            long arrivalMillis = p.getWindowStartMillis() + (5 * 60 * 1000);
+                            double remainingMins = Math.max(0, (arrivalMillis - now) / 60000.0);
+                            
+                            String title = "Thermodynamic Alert: Upcoming Storm";
+                            String content = String.format(Locale.ENGLISH,
+                                    "Storm predicted at %s is expected in ~%.0f minutes. Prepare for rain.",
+                                    p.getPredictedArrival(), remainingMins);
+                            
+                            sendWeatherAlert(title, content);
+                            
+                            // Mark as notified so it fires exactly once
+                            compositeDisposable.add(
+                                thermodynamicPredictionRepository.mark45mAlertSent(p.getId())
+                                    .subscribeOn(Schedulers.io())
+                                    .subscribe()
+                            );
+                        }
+                    }
+                }, throwable -> Log.e(TAG, "Error checking pending 45m alerts", throwable));
         compositeDisposable.add(disposable);
     }
 

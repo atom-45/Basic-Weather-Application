@@ -41,7 +41,31 @@ public class ThermodynamicPredictionRepository {
         return dao.verifyEventGroup(eventId, "VERIFIED", outcome).subscribeOn(Schedulers.io());
     }
 
+    public Completable verifyTargetedPrediction(ThermodynamicPrediction prediction, String outcome) {
+        long toleranceMillis = 5 * 60 * 1000; // 5-minute tolerance around arrival window
+        long windowStart = prediction.getWindowStartMillis() - toleranceMillis;
+        long windowEnd = prediction.getWindowEndMillis() + toleranceMillis;
+        String verifiedTimestamp = java.time.LocalDateTime.now().toString();
+
+        return dao.verifyTargetedEventGroup(
+                prediction.getStormEventId(),
+                "VERIFIED",
+                outcome,
+                verifiedTimestamp,
+                windowStart,
+                windowEnd
+        ).subscribeOn(Schedulers.io());
+    }
+
     public Completable markExpiredPredictions(long currentTimeMillis) {
         return dao.markExpiredPredictions(currentTimeMillis).subscribeOn(Schedulers.io());
+    }
+
+    public List<ThermodynamicPrediction> getPredictionsNeeding45mAlert(long currentTimeMillis) {
+        return dao.getPredictionsNeeding45mAlert(currentTimeMillis);
+    }
+
+    public Completable mark45mAlertSent(int id) {
+        return dao.mark45mAlertSent(id).subscribeOn(Schedulers.io());
     }
 }

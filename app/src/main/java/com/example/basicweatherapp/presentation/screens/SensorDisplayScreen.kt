@@ -104,10 +104,22 @@ fun SensorDisplayScreen(
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe()
             )
+            val now = System.currentTimeMillis()
+            val tolerance = 15 * 60 * 1000L
+            unverifiedPredictions.firstOrNull {
+                now >= (it.windowStartMillis - tolerance) && now <= (it.windowEndMillis + tolerance)
+            }?.let { matchingPred ->
+                compositeDisposable.add(
+                    sensorDataViewModel.verifyPrediction(matchingPred, verification.actualOutcome)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe()
+                )
+            }
         },
-        onAuditSubmit = { eventId, outcome ->
+        onAuditSubmit = { prediction, outcome ->
             compositeDisposable.add(
-                sensorDataViewModel.verifyPrediction(eventId, outcome)
+                sensorDataViewModel.verifyPrediction(prediction, outcome)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe()
@@ -133,7 +145,7 @@ fun SensorDisplayContent(
     onBackClick: () -> Unit,
     onRainPredictionClick: () -> Unit,
     onVerificationSubmit: (PredictionVerification) -> Unit,
-    onAuditSubmit: (String, String) -> Unit
+    onAuditSubmit: (ThermodynamicPrediction, String) -> Unit
 ) {
     val periods = listOf("10 minutes", "30 minutes", "60 minutes", "120 minutes", "150 minutes", "180 minutes", "240 minutes", "300 minutes")
     val dataTypes = listOf("Temperature", "Humidity", "Pressure")
@@ -331,8 +343,12 @@ fun SensorDisplayContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Thermodynamic Verification Section
-            if (stormReport != null && !stormReport.isSafeToWalk) {
+            // Thermodynamic Verification Section (Only shown for IMMINENT events <= 30 mins when NO active Live Audit card is displaying)
+            val isImminentStorm = stormReport?.let { 
+                (it.arrivalTimeMinutes in 0.1..30.0) || (it.arrivalTimeMinutes <= 0 && !it.isSafeToWalk)
+            } ?: false
+
+            if (stormReport != null && !stormReport.isSafeToWalk && activePrediction == null && isImminentStorm) {
                 var feedbackSubmitted by remember { mutableStateOf(false) }
                 
                 Card(
@@ -622,7 +638,7 @@ fun SensorDisplayContent(
 @Composable
 fun AuditCard(
     prediction: ThermodynamicPrediction,
-    onVerify: (String, String) -> Unit
+    onVerify: (ThermodynamicPrediction, String) -> Unit
 ) {
     var feedbackSubmitted by remember { mutableStateOf(false) }
 
@@ -667,7 +683,7 @@ fun AuditCard(
                     items(outcomes) { outcome ->
                         AssistChip(
                             onClick = {
-                                onVerify(prediction.stormEventId, outcome)
+                                onVerify(prediction, outcome)
                                 feedbackSubmitted = true
                             },
                             label = { Text(outcome, fontSize = 11.sp, color = Color.White) },

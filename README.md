@@ -4,46 +4,53 @@ A modernized, high-performance Android weather dashboard that blends global mete
 
 ## 🌟 Modern UI/UX
 
-The application has undergone a complete visual transformation using **Jetpack Compose** and **Material 3**, featuring:
-*   **Glassmorphism Design:** Sophisticated semi-transparent surfaces with subtle borders and dynamic gradients.
-*   **Hero Dashboard:** A dramatic focal point for temperature and primary weather conditions.
-*   **Bento Box Layouts:** Clean, organized grids for weather details and sensor readings.
-*   **Safety & Analytics:** Integrated thermodynamic safety banners, "Live Model Audit" cards, and horizontally scrollable verification chips.
+The application features a modern visual design using **Jetpack Compose** and **Material 3**:
+*   **Glassmorphism Design:** Semi-transparent surfaces with subtle borders and dynamic gradients.
+*   **Hero Dashboard:** Focal point for live local temperature and global weather conditions.
+*   **Bento Box Layouts:** Clean, organized grids for sensor telemetry ($T, H, P, \text{Altitude}$) and meteorological metrics.
+*   **Safety & Analytics:** Integrated thermodynamic safety banners, dynamic "Live Model Audit" cards, and de-duplicated verification options.
 *   **Single-Dashboard Flow:** Integrated search and user profile management directly on the main screen.
 
-## 🚀 Thermodynamic Analysis Engine (NEW)
+## 🚀 Thermodynamic Analysis Engine
 
-The core of the application now features a custom physics engine that applies the **First Law of Thermodynamics** to your local environment.
-*   **Scientific Differential Equation:** The engine solves for the internal energy balance:
+The core of the application features a custom physics engine that applies the **First Law of Thermodynamics** to local air parcels:
+*   **Differential Equation Solver:** Solves the internal energy balance equation:
     $$dT/dt = \frac{1}{\rho c_p} \frac{dp}{dt} + \frac{J}{c_p}$$
-*   **Real-Time Storm Tracking:** By monitoring the "Thermodynamic Residual" (Actual vs. Predicted cooling), the app detects atmospheric instability before rain even starts.
-*   **Dynamic Density:** Calculates air density ($\rho$) in real-time using Virtual Temperature to account for humidity variations.
-*   **Forward Projection:** Uses the Forward Euler method to predict the exact timestamp of rain arrival by projecting when the air parcel will hit the Dew Point.
-*   **Black Box Audit System:** A high-fidelity logging system that records every prediction snapshot (Temp, Humidity, Pressure, Residual) and asks for user verification within a 10-minute arrival window.
-*   **Event Grouping & Back-Propagation:** Automatically groups sequential storm build-up predictions into "Events." Verifying one prediction applies the ground truth to the entire sequence for superior Python trend analysis.
-*   **Stationary Precision:** Optimized for stationary BLE sensors, calculating storm approach speed based on localized pressure tendencies ($dp/dt$).
+*   **Real-Time Storm Tracking:** Monitors the "Thermodynamic Residual" (Actual vs. Theoretical cooling) to detect atmospheric instability before rain even starts.
+*   **Dynamic Density Calculation:** Computes air density ($\rho$) in real time using Virtual Temperature to account for humidity variations.
+*   **Forward Euler Projection:** Projects the exact arrival timestamp of rain by extrapolating when the cooling parcel will intersect the Dew Point.
+*   **Black Box Audit System:** Logs prediction snapshots ($T, H, P$, Residual, Predicted Arrival) into Room database table `thermodynamic_predictions`.
+*   **Merged Hybrid Verification Model:**
+    *   **Targeted Window Back-Propagation:** Verifying a Live Audit card updates pending buildup snapshots matching the active arrival window with a **5-minute tolerance window** ($\pm 5\text{ mins}$ around native 10-minute window = 20-minute total span).
+    *   **Long-Horizon Forecast Isolation:** Predictions targeting 3–4+ hours in the future are completely isolated and remain `PENDING` until their target arrival window occurs.
+    *   **Immutable Verifications:** Once a prediction snapshot is marked `VERIFIED`, it can **never** be overwritten or altered by subsequent audits.
+    *   **Phase Error Tracking ($\Delta t$):** Captures $T_{\text{verify}}$ (exact ISO timestamp when user tapped verification) alongside $T_{\text{predicted\_arrival}}$, enabling exact phase error ($\Delta t = T_{\text{verify}} - T_{\text{predicted}}$) analysis in Python.
+    *   **Human Catchment Window:** Accommodates 10-minute BLE sensor update cycles and real-world human response times without requiring exact-second button presses.
 
 ## 🛠 Features
 
-*   **Global Forecasts:** Real-time, hourly, and 3-day forecasts for any city worldwide.
+*   **Global Forecasts:** Real-time, hourly, and 3-day forecasts for any city worldwide via Retrofit 2.
 *   **Precision BLE Integration:** Optimized for **Arduino Nano RP2040 Connect** (BME680). The app features an intelligent target-device filter to automatically connect to your local station.
-*   **Proactive Weather Alerts:** A dedicated high-priority notification channel that combines thermodynamic energy balance with dew point analysis to warn you of approaching storms even when the app is in the background.
-*   **Expanded Verification Loop:** A multi-category ground-truth system (**Heavy Rain, Light Rain, Cloudy, Windy, Lightning, Clear**). Verifications now capture the **Thermodynamic Residual** and Phase Error data.
-*   **Advanced Dataset Exporting:** Professional data extraction tools using **Android WorkManager**. Export a compressed ZIP containing `raw_sensor_data.csv`, `labeled_verifications.csv`, and the new `thermodynamic_blackbox.csv` for direct Python research.
-*   **Integrated Search & Recents:** Instant location switching with a modern search bar and swipe-to-delete management for saved places.
-*   **Offline Support:** Automatic caching of the last known weather data for seamless offline use.
+*   **Multi-Stage Proactive Notifications:**
+    *   **45-Minute Scheduled Countdown Alert:** Background service monitors pending forecasts created hours ago and dispatches a high-priority heads-up warning when a storm is **45 minutes away** (*"Storm predicted at 19:45 is expected in ~45 minutes. Prepare for rain."*). Dispatches **exactly once** using a `notified_45m` database flag.
+    *   **Imminent Sensor Warning:** Triggers immediate alerts when live sensor readings detect rain arriving within 45 minutes or rapid pressure drops ($> 1\text{ hPa/hr}$).
+*   **Multi-Category Ground Truth System:** User feedback options (**Heavy Rain, Light Rain, Cloudy, Windy, Lightning, Clear**).
+*   **Advanced Dataset Exporting:** Powered by **Android WorkManager**. Exports a compressed ZIP containing:
+    1.  `thermodynamic_blackbox.csv`: Contains `Timestamp`, `Temp`, `Humidity`, `Pressure`, `PredictedArrival`, `VerifiedTimestamp`, `Speed`, `Residual`, `EventID`, `Status`, `ActualOutcome`.
+    2.  `labeled_verifications.csv`: Tier 1 real-time feedback logs.
+    3.  `raw_sensor_data.csv`: High-frequency sensor telemetry.
+*   **Integrated Search & Recents:** Instant location switching with a modern search bar and swipe-to-delete management.
+*   **Offline Support:** Automatic Room caching of global weather and sensor history.
 
 ## 🏗 Architecture & Tech Stack
 
-The project follows modern Android development practices with a clean separation of concerns:
-*   **UI Layer:** 100% Jetpack Compose with a Single-Activity architecture.
-*   **Reactive Lifecycle Management:** Migrated from manual disposables to idiomatic Compose `subscribeAsState()` and `LaunchedEffect` patterns, ensuring leak-proof data streaming.
-*   **Logic Layer:** MVVM architecture with specialized **Physics Utility Packages** for atmospheric calculations.
-*   **Background Processing:** **WorkManager** for reliable, memory-safe historical data exports.
-*   **Concurrency:** RxJava 3 for core business logic and BLE streams, bridged to Compose.
-*   **Networking:** Retrofit 2 & OkHttp for resilient API communication.
-*   **Persistence:** Room Database (Version 6) storing user data, saved locations, weather caching, and the comprehensive **Thermodynamic Black Box** history.
-*   **Dependency Injection:** Dagger 2 for robust component management.
+*   **UI Layer:** 100% Jetpack Compose with a Single-Activity architecture (`MainActivity.kt`).
+*   **Reactive Lifecycle Management:** RxJava 3 bridged to Compose via `subscribeAsState()` and lifecycle-aware `LaunchedEffect` routines.
+*   **Persistence:** Room Database (**Version 8**) storing user data, saved locations, weather caching, and the comprehensive Thermodynamic Black Box.
+    *   `MIGRATION_6_7`: Added `verified_timestamp` column.
+    *   `MIGRATION_7_8`: Added `notified_45m` column (`INTEGER NOT NULL DEFAULT 0`).
+*   **Background Processing:** **WorkManager** for memory-safe dataset exports and `WeatherBLEService` for continuous BLE telemetry and notifications.
+*   **Dependency Injection:** Dagger 2 for component management.
 
 ## 🚀 Getting Started
 
@@ -59,4 +66,4 @@ The project follows modern Android development practices with a clean separation
 Clone the repository and import it into the latest version of **Android Studio (Quail or newer)**.
 
 ---
-*Developed with a focus on precision, performance, and modern design.*
+*Developed with a focus on atmospheric physics, performance, and modern design.*

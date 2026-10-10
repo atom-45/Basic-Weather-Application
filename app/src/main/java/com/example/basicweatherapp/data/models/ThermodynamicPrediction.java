@@ -48,6 +48,12 @@ public class ThermodynamicPrediction implements Serializable {
     @ColumnInfo(name = "actual_outcome")
     private String actualOutcome;
 
+    @ColumnInfo(name = "verified_timestamp")
+    private String verifiedTimestamp;
+
+    @ColumnInfo(name = "notified_45m")
+    private boolean notified45m;
+
     public ThermodynamicPrediction(String originalTimestamp, float temperature, float humidity, 
                                    float pressure, String predictedArrival, double stormSpeed, 
                                    double residual, long windowStartMillis, long windowEndMillis, 
@@ -82,4 +88,10 @@ public class ThermodynamicPrediction implements Serializable {
     public String getStormEventId() { return stormEventId; }
     public String getActualOutcome() { return actualOutcome; }
     public void setActualOutcome(String actualOutcome) { this.actualOutcome = actualOutcome; }
+
+    public String getVerifiedTimestamp() { return verifiedTimestamp; }
+    public void setVerifiedTimestamp(String verifiedTimestamp) { this.verifiedTimestamp = verifiedTimestamp; }
+
+    public boolean isNotified45m() { return notified45m; }
+    public void setNotified45m(boolean notified45m) { this.notified45m = notified45m; }
 }

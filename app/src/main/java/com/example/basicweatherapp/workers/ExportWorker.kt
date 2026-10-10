@@ -88,11 +88,11 @@ class ExportWorker(
 
             // Write Thermodynamic Predictions CSV
             FileOutputStream(thermoFile).use { out ->
-                out.write("Timestamp,Temp,Humidity,Pressure,PredictedArrival,Speed,Residual,EventID,Status,ActualOutcome\n".toByteArray())
+                out.write("Timestamp,Temp,Humidity,Pressure,PredictedArrival,VerifiedTimestamp,Speed,Residual,EventID,Status,ActualOutcome\n".toByteArray())
                 thermoPredictions.forEach { p ->
-                    val row = String.format(Locale.ENGLISH, "%s,%.2f,%.2f,%.2f,%s,%.2f,%.2f,%s,%s,%s\n",
+                    val row = String.format(Locale.ENGLISH, "%s,%.2f,%.2f,%.2f,%s,%s,%.2f,%.2f,%s,%s,%s\n",
                         p.originalTimestamp, p.temperature, p.humidity, p.pressure, 
-                        p.predictedArrival, p.stormSpeed, p.residual, p.stormEventId, 
+                        p.predictedArrival, p.verifiedTimestamp ?: "N/A", p.stormSpeed, p.residual, p.stormEventId, 
                         p.verificationStatus, p.actualOutcome ?: "N/A")
                     out.write(row.toByteArray())
                 }
