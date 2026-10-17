@@ -22,6 +22,10 @@ android {
         Properties properties = new Properties()
         properties.load(project.rootProject.file('local.properties').newDataInputStream())
         buildConfigField "String", "WEATHER_API_KEY", properties.getProperty('WEATHER_API_KEY')
+        buildConfigField "String", "BLE_SERVICE_UUID", properties.getProperty('BLE_SERVICE_UUID', '"f9e585d2-77fa-47e6-abbb-113fd8874a98"')
+        buildConfigField "String", "BLE_LIVE_CHAR_UUID", properties.getProperty('BLE_LIVE_CHAR_UUID', '"f9e585d3-77fa-47e6-abbb-113fd8874a98"')
+        buildConfigField "String", "BLE_HISTORY_CHAR_UUID", properties.getProperty('BLE_HISTORY_CHAR_UUID', '"f9e585d4-77fa-47e6-abbb-113fd8874a98"')
+        buildConfigField "String", "BLE_SYNC_CHAR_UUID", properties.getProperty('BLE_SYNC_CHAR_UUID', '"f9e585d5-77fa-47e6-abbb-113fd8874a98"')
     }
 
     buildTypes {

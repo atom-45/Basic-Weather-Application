@@ -1,7 +1,6 @@
 package com.example.basicweatherapp.services;
 
 import android.annotation.SuppressLint;
-import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -30,6 +29,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.example.basicweatherapp.R;
+import com.example.basicweatherapp.data.models.HistoricalSensorRecord;
 import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.models.ThermodynamicPrediction;
 import com.example.basicweatherapp.data.repositories.SensorDataRepository;
@@ -44,8 +44,12 @@ import com.example.basicweatherapp.utilities.Constants;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -72,6 +76,8 @@ public class WeatherBLEService extends Service {
     public final static String ACTION_GATT_DISCONNECTED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_GATT_DISCONNECTED";
     public final static String ACTION_GATT_SERVICES_DISCOVERED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_DATA_AVAILABLE = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_DATA_AVAILABLE";
+    public final static String ACTION_SYNC_STARTED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_SYNC_STARTED";
+    public final static String ACTION_SYNC_COMPLETED = "com.atom.bluetoothfitnessapplication.bluetooth.le.ACTION_SYNC_COMPLETED";
     public final static String EXTRA_SENSOR_DATA = "com.atom.bluetoothfitnessapplication.bluetooth.le.EXTRA_DATA";
 
     private static final int STATE_DISCONNECTED = 0;
@@ -89,6 +95,21 @@ public class WeatherBLEService extends Service {
 
     @Inject
     ThermodynamicPredictionRepository thermodynamicPredictionRepository;
+
+    private final List<HistoricalSensorRecord> historyAccumulator = new ArrayList<>();
+    private final android.os.Handler historyHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable historyFlushRunnable = new Runnable() {
+        @Override
+        public void run() {
+            List<HistoricalSensorRecord> batch;
+            synchronized (historyAccumulator) {
+                if (historyAccumulator.isEmpty()) return;
+                batch = new ArrayList<>(historyAccumulator);
+                historyAccumulator.clear();
+            }
+            processHistoricalSyncBatch(batch);
+        }
+    };
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback()
     {
@@ -123,13 +144,13 @@ public class WeatherBLEService extends Service {
                 BluetoothGattService service = bluetoothGatt
                         .getService(UUID.fromString(Constants.RP2040_SERVICE_UUID));
 
-                BluetoothGattCharacteristic characteristic = service
-                        .getCharacteristic(UUID
-                                .fromString(Constants.RP2040_CHARACTERISTICS_UUID));
+                if (service != null) {
+                    BluetoothGattCharacteristic liveChar = service.getCharacteristic(UUID.fromString(Constants.RP2040_CHARACTERISTICS_UUID));
+                    if (liveChar != null) {
+                        setCharacteristicNotification(liveChar, true);
+                    }
+                }
 
-
-                readCharacteristic(characteristic);
-                //writeCharacteristic(characteristic);
                 broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
 
             } else {
@@ -170,32 +191,51 @@ public class WeatherBLEService extends Service {
                                             BluetoothGattCharacteristic characteristic)
         {
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+            UUID uuid = characteristic.getUuid();
 
-            float[] sensorFloats = getArraySensorData(characteristic);
-
-            SensorData sensorData = new SensorData(
-                    LocalDateTime.now().toString(), //current date and time of data collection
-                    sensorFloats[0], //humidity in %
-                    sensorFloats[1], // degree celsius
-                    sensorFloats[2], //hPa
-                    sensorFloats[3]); //metres
-
-            if(sensorDataRepository != null) {
-                Log.d(TAG, "onCharacteristicChanged: Sensor Repository is not null");
-                Disposable disposable = sensorDataRepository.insert(sensorData)
-                        .doOnComplete(() -> {
-                            Log.d(TAG, "SUCCESS: Sensor data inserted into Room database.");
-                            performAtmosphericAnalysis();
-                        })
-                        .doOnError(throwable -> Log.e(TAG, "ERROR: Failed to insert sensor data", throwable ))
-                        .subscribe();
-                compositeDisposable.add(disposable);
+            if (UUID.fromString(Constants.RP2040_HISTORY_CHARACTERISTIC_UUID).equals(uuid)) {
+                byte[] value = characteristic.getValue();
+                HistoricalSensorRecord record = parseHistoricalRecord(value);
+                if (record != null) {
+                    Log.d(TAG, "Received historical packet: t=" + record.sampleMillis() + " T=" + record.temperature() + " H=" + record.humidity() + " P=" + record.pressure() + " A=" + record.altitude());
+                    if (!(record.sampleMillis() == 0 && record.temperature() == 0 && record.humidity() == 0)) {
+                        synchronized (historyAccumulator) {
+                            historyAccumulator.add(record);
+                        }
+                        historyHandler.removeCallbacks(historyFlushRunnable);
+                        historyHandler.postDelayed(historyFlushRunnable, 300);
+                    }
+                }
+                return;
             }
 
-            Log.d(TAG, "onCharacteristicChanged: "+sensorData);
-            final Intent intent = new Intent(ACTION_DATA_AVAILABLE);
-            intent.putExtra(EXTRA_SENSOR_DATA, sensorFloats);
-            sendBroadcast(intent);
+            if (UUID.fromString(Constants.RP2040_CHARACTERISTICS_UUID).equals(uuid)) {
+                float[] sensorFloats = getArraySensorData(characteristic);
+
+                SensorData sensorData = new SensorData(
+                        LocalDateTime.now().toString(), // current date and time of data collection
+                        sensorFloats[0], // humidity in %
+                        sensorFloats[1], // degree celsius
+                        sensorFloats[2], // hPa
+                        sensorFloats[3]); // metres
+
+                if (sensorDataRepository != null) {
+                    Log.d(TAG, "onCharacteristicChanged: Sensor Repository is not null");
+                    Disposable disposable = sensorDataRepository.insert(sensorData)
+                            .doOnComplete(() -> {
+                                Log.d(TAG, "SUCCESS: Sensor data inserted into Room database.");
+                                performAtmosphericAnalysis();
+                            })
+                            .doOnError(throwable -> Log.e(TAG, "ERROR: Failed to insert sensor data", throwable))
+                            .subscribe(() -> {}, throwable -> Log.e(TAG, "ERROR: Failed to insert sensor data", throwable));
+                    compositeDisposable.add(disposable);
+                }
+
+                Log.d(TAG, "onCharacteristicChanged: " + sensorData);
+                final Intent intent = new Intent(ACTION_DATA_AVAILABLE);
+                intent.putExtra(EXTRA_SENSOR_DATA, sensorFloats);
+                sendBroadcast(intent);
+            }
         }
 
         @Override
@@ -203,6 +243,23 @@ public class WeatherBLEService extends Service {
                                       BluetoothGattDescriptor descriptor,
                                       int status)
         {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "onDescriptorWrite: Descriptor written successfully for " + descriptor.getCharacteristic().getUuid());
+                if (UUID.fromString(Constants.RP2040_CHARACTERISTICS_UUID).equals(descriptor.getCharacteristic().getUuid())) {
+                    BluetoothGattService service = gatt.getService(UUID.fromString(Constants.RP2040_SERVICE_UUID));
+                    if (service != null) {
+                        BluetoothGattCharacteristic historyChar = service.getCharacteristic(UUID.fromString(Constants.RP2040_HISTORY_CHARACTERISTIC_UUID));
+                        if (historyChar != null) {
+                            setCharacteristicNotification(historyChar, true);
+                        }
+                    }
+                } else if (UUID.fromString(Constants.RP2040_HISTORY_CHARACTERISTIC_UUID).equals(descriptor.getCharacteristic().getUuid())) {
+                    Log.d(TAG, "History notifications fully enabled. Now checking gap and triggering historical sync...");
+                    checkAndTriggerHistoricalSync();
+                }
+            } else {
+                Log.w(TAG, "onDescriptorWrite failed with status: " + status);
+            }
             enableConfiguration(gatt, descriptor.getCharacteristic());
 
         }
@@ -242,6 +299,19 @@ public class WeatherBLEService extends Service {
                 .setSmallIcon(R.drawable.sunny)
                 .setOngoing(true)
                 .build();
+    }
+
+    private Notification createSyncNotification(String title, String text, boolean isProgress)
+    {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSmallIcon(R.drawable.rain_2)
+                .setOngoing(true);
+        if (isProgress) {
+            builder.setProgress(0, 0, true);
+        }
+        return builder.build();
     }
 
     private void performAtmosphericAnalysis() {
@@ -312,11 +382,197 @@ public class WeatherBLEService extends Service {
                             compositeDisposable.add(
                                 thermodynamicPredictionRepository.mark45mAlertSent(p.getId())
                                     .subscribeOn(Schedulers.io())
-                                    .subscribe()
+                                    .subscribe(() -> {}, err -> Log.e(TAG, "Error marking 45m alert sent", err))
                             );
                         }
                     }
                 }, throwable -> Log.e(TAG, "Error checking pending 45m alerts", throwable));
+        compositeDisposable.add(disposable);
+    }
+
+    /**
+     * Relative Tick Back-Projection:
+     * Calculates the exact ISO UTC timestamp for a historical sample based on the Arduino's relative tick counter.
+     */
+    public static String calculateUtcTimestamp(long phoneUtcMillis, long arduinoCurrentMillis, long sampleMillis) {
+        long deltaMillis = arduinoCurrentMillis - sampleMillis;
+        long sampleUtcMillis = phoneUtcMillis - deltaMillis;
+        return LocalDateTime.ofInstant(Instant.ofEpochMilli(sampleUtcMillis), ZoneId.systemDefault()).toString();
+    }
+
+    /**
+     * Parses a 20-byte historical telemetry payload from Arduino:
+     * Bytes 0-3: timestampMillis (uint32_t)
+     * Bytes 4-7: humidity (float)
+     * Bytes 8-11: temperature (float)
+     * Bytes 12-15: pressure (float)
+     * Bytes 16-19: altitude (float)
+     */
+    public static HistoricalSensorRecord parseHistoricalRecord(byte[] value) {
+        if (value == null || value.length < 20) return null;
+        ByteBuffer buffer = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN);
+        long sampleMillis = buffer.getInt(0) & 0xFFFFFFFFL; // uint32_t unsigned conversion
+        float humidity = buffer.getFloat(4);                  // bytes 4-7
+        float temp = buffer.getFloat(8);                      // bytes 8-11
+        float pressure = buffer.getFloat(12);                 // bytes 12-15
+        float altitude = buffer.getFloat(16);                 // bytes 16-19
+        return new HistoricalSensorRecord(sampleMillis, temp, humidity, pressure, altitude);
+    }
+
+    /**
+     * Sends a 1-byte command (0x01 = SYNC, 0x02 = ACK) to the Arduino sync control characteristic.
+     */
+    public void sendSyncControlCommand(byte command) {
+        if (bluetoothGatt == null) {
+            Log.w(TAG, "sendSyncControlCommand: bluetoothGatt is null");
+            return;
+        }
+        BluetoothGattService service = bluetoothGatt.getService(UUID.fromString(Constants.RP2040_SERVICE_UUID));
+        if (service == null) {
+            Log.w(TAG, "sendSyncControlCommand: RP2040_SERVICE_UUID not found");
+            return;
+        }
+        BluetoothGattCharacteristic syncChar = service.getCharacteristic(UUID.fromString(Constants.RP2040_SYNC_CONTROL_CHARACTERISTIC_UUID));
+        if (syncChar == null) {
+            Log.w(TAG, "sendSyncControlCommand: RP2040_SYNC_CONTROL_CHARACTERISTIC_UUID not found");
+            return;
+        }
+
+        Log.d(TAG, "Sending sync command: 0x" + Integer.toHexString(command));
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (command == Constants.SYNC_COMMAND_REQUEST) {
+            if (manager != null) {
+                manager.notify(NOTIFICATION_ID, createSyncNotification("Syncing Sensor History", "Downloading offline readings from sensor...", true));
+            }
+            broadcastUpdate(ACTION_SYNC_STARTED);
+        } else if (command == Constants.SYNC_COMMAND_ACK) {
+            if (manager != null) {
+                manager.notify(NOTIFICATION_ID, createNotification("Weather Sensor Connected", "Receiving live data from BME680 sensor..."));
+            }
+            broadcastUpdate(ACTION_SYNC_COMPLETED);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            bluetoothGatt.writeCharacteristic(syncChar, new byte[]{command}, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        } else {
+            syncChar.setValue(new byte[]{command});
+            syncChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            bluetoothGatt.writeCharacteristic(syncChar);
+        }
+    }
+
+    public static long parseDateToMillis(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Instant.parse(dateStr).toEpochMilli();
+        } catch (DateTimeParseException e) {
+            try {
+                return LocalDateTime.parse(dateStr).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            } catch (DateTimeParseException e2) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Processes a batch of historical telemetry samples received from Arduino buffer,
+     * applying Relative Tick Back-Projection and pre-insert deduplication.
+     */
+    public void processHistoricalSyncBatch(List<HistoricalSensorRecord> records) {
+        if (records == null || records.isEmpty() || sensorDataRepository == null) return;
+
+        long phoneUtcMillis = System.currentTimeMillis();
+
+        long maxTick = 0;
+        for (HistoricalSensorRecord r : records) {
+            if (r.sampleMillis() > maxTick) {
+                maxTick = r.sampleMillis();
+            }
+        }
+        final long referenceTick = maxTick;
+
+        Disposable disposable = Observable.fromCallable(() -> sensorDataRepository.getLatestSensorData())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(latestList -> {
+                    long latestDatabaseMillis = 0;
+                    if (latestList != null && !latestList.isEmpty()) {
+                        latestDatabaseMillis = parseDateToMillis(latestList.get(0).getDate());
+                    }
+
+                    List<SensorData> batchToInsert = new ArrayList<>();
+                    for (HistoricalSensorRecord record : records) {
+                        long deltaMillis = Math.max(0, referenceTick - record.sampleMillis());
+                        long sampleUtcMillis = phoneUtcMillis - deltaMillis;
+
+                        // Deduplication: Skip samples older than or equal to the latest database entry
+                        if (latestDatabaseMillis > 0 && sampleUtcMillis <= latestDatabaseMillis) {
+                            continue;
+                        }
+
+                        String isoDate = LocalDateTime.ofInstant(
+                                Instant.ofEpochMilli(sampleUtcMillis),
+                                ZoneId.systemDefault()
+                        ).toString();
+
+                        batchToInsert.add(new SensorData(
+                                isoDate,
+                                record.humidity(),
+                                record.temperature(),
+                                record.pressure(),
+                                record.altitude()
+                        ));
+                    }
+
+                    // Sort batch in strict ascending chronological order (oldest to newest)
+                    batchToInsert.sort((a, b) -> a.getDate().compareTo(b.getDate()));
+
+                    if (!batchToInsert.isEmpty()) {
+                        Log.d(TAG, "Backfilling " + batchToInsert.size() + " historical records in strict chronological order via Relative Tick Back-Projection...");
+                        compositeDisposable.add(
+                            sensorDataRepository.insertAll(batchToInsert)
+                                .doOnComplete(() -> {
+                                    Log.d(TAG, "SUCCESS: Historical batch (" + batchToInsert.size() + " records) backfilled into Room. Sending ACK (0x02)...");
+                                    sendSyncControlCommand(Constants.SYNC_COMMAND_ACK);
+                                    performAtmosphericAnalysis();
+                                })
+                                .doOnError(err -> Log.e(TAG, "Error backfilling historical batch", err))
+                                .subscribe(() -> {}, err -> Log.e(TAG, "Error backfilling historical batch", err))
+                        );
+                    } else {
+                        Log.d(TAG, "Historical batch contained no new samples after deduplication. Sending ACK (0x02)...");
+                        sendSyncControlCommand(Constants.SYNC_COMMAND_ACK);
+                    }
+                }, err -> Log.e(TAG, "Error querying latest database entry for historical sync", err));
+
+        compositeDisposable.add(disposable);
+    }
+
+    private void checkAndTriggerHistoricalSync() {
+        if (sensorDataRepository == null) return;
+
+        Disposable disposable = Observable.fromCallable(() -> sensorDataRepository.getLatestSensorData())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(latestList -> {
+                    long now = System.currentTimeMillis();
+                    long latestMillis = 0;
+                    if (latestList != null && !latestList.isEmpty()) {
+                        latestMillis = parseDateToMillis(latestList.get(0).getDate());
+                    }
+
+                    long tenMins = 10 * 60 * 1000L;
+                    if (latestMillis == 0 || (now - latestMillis) > tenMins) {
+                        long gapMins = latestMillis == 0 ? -1 : (now - latestMillis) / 60000;
+                        Log.d(TAG, "Gap check passed (gap: " + gapMins + " mins). Writing SYNC request (0x01)...");
+                        sendSyncControlCommand(Constants.SYNC_COMMAND_REQUEST);
+                    } else {
+                        Log.d(TAG, "No history sync needed. Latest entry is recent (" + ((now - latestMillis) / 60000) + " mins ago).");
+                    }
+                }, err -> Log.e(TAG, "Error checking gap for historical sync", err));
+
         compositeDisposable.add(disposable);
     }
 
@@ -373,7 +629,7 @@ public class WeatherBLEService extends Service {
                         thermodynamicPredictionRepository.insert(prediction)
                             .doOnComplete(() -> Log.d(TAG, "SUCCESS: Black Box prediction saved."))
                             .doOnError(e -> Log.e(TAG, "ERROR: Failed to save Black Box prediction", e))
-                            .subscribe()
+                            .subscribe(() -> {}, e -> Log.e(TAG, "ERROR: Failed to save Black Box prediction", e))
                     );
                 }, throwable -> Log.e(TAG, "Error fetching latest prediction for grouping", throwable));
         compositeDisposable.add(disposable);
@@ -491,10 +747,9 @@ public class WeatherBLEService extends Service {
     @NonNull
     private float[] getArraySensorData(BluetoothGattCharacteristic characteristic)
     {
-        
         byte[] value = characteristic.getValue();
 
-        if(value==null || value.length < 16)
+        if (value == null || value.length < 16)
         {
             Log.e(TAG, "getArraySensorData: Received invalid data length: " +
                     (value != null ? value.length : 0));
@@ -504,12 +759,25 @@ public class WeatherBLEService extends Service {
 
         ByteBuffer buffer = ByteBuffer.wrap(value).order(ByteOrder.LITTLE_ENDIAN);
 
-        float humidity = buffer.getFloat();    // Reads bytes 0-3
-        float temperature = buffer.getFloat(); // Reads bytes 4-7
-        float pressure = buffer.getFloat();    // Reads bytes 8-11
-        float altitude = buffer.getFloat();
+        float humidity;
+        float temperature;
+        float pressure;
+        float altitude;
 
-        Log.d(TAG, "Decoded: H: " + humidity + " | T: " + temperature + " | P: " + pressure + " | A: " + altitude);
+        if (value.length >= 20) {
+            long sampleMillis = buffer.getInt(0) & 0xFFFFFFFFL; // Bytes 0-3: t (uint32_t)
+            humidity = buffer.getFloat(4);                      // Bytes 4-7: h (float)
+            temperature = buffer.getFloat(8);                   // Bytes 8-11: temp (float)
+            pressure = buffer.getFloat(12);                     // Bytes 12-15: p (float)
+            altitude = buffer.getFloat(16);                     // Bytes 16-19: alt (float)
+            Log.d(TAG, "Decoded 20-byte payload [t=" + sampleMillis + "]: H: " + humidity + " | T: " + temperature + " | P: " + pressure + " | A: " + altitude);
+        } else {
+            humidity = buffer.getFloat(0);    // Bytes 0-3
+            temperature = buffer.getFloat(4); // Bytes 4-7
+            pressure = buffer.getFloat(8);    // Bytes 8-11
+            altitude = buffer.getFloat(12);   // Bytes 12-15
+            Log.d(TAG, "Decoded 16-byte payload: H: " + humidity + " | T: " + temperature + " | P: " + pressure + " | A: " + altitude);
+        }
 
         return new float[]{humidity, temperature, pressure, altitude};
     }
@@ -523,18 +791,17 @@ public class WeatherBLEService extends Service {
     {
         if(bluetoothGatt == null){
             Log.w(TAG, "setCharacteristicNotification: Bluetooth not initialized.");
+            return;
         }
 
         bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
-        if(UUID.fromString(Constants.RP2040_CHARACTERISTICS_UUID).equals(characteristic.getUuid())){
-
-            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
-                    UUID.fromString(Constants.DESCRIPTOR_GEN_UUID));
-
+        
+        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                UUID.fromString(Constants.DESCRIPTOR_GEN_UUID));
+        if (descriptor != null) {
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             bluetoothGatt.writeDescriptor(descriptor);
         }
-
     }
     private void close()
     {

@@ -50,6 +50,8 @@ import com.example.basicweatherapp.data.models.User
 import com.example.basicweatherapp.data.remote.responses.ForecastResponse
 import com.example.basicweatherapp.di.application.WeatherApplication
 import com.example.basicweatherapp.factories.ViewModelFactory
+import com.example.basicweatherapp.physics.DewPointCalculator
+import com.example.basicweatherapp.physics.RainAnalysisEngine
 import com.example.basicweatherapp.presentation.screens.*
 import com.example.basicweatherapp.presentation.theme.BasicWeatherAppTheme
 import com.example.basicweatherapp.presentation.theme.Muli
@@ -400,7 +402,7 @@ class MainActivity : ComponentActivity() {
                         .doOnNext { response ->
                             weatherViewModel.cacheForecast(response)
                                 .subscribeOn(Schedulers.io())
-                                .subscribe()
+                                .subscribe({}, { Log.e(TAG, "Error caching forecast", it) })
                         }
                         .map { response -> Triple(response, intro, location) }
                 }
@@ -432,7 +434,7 @@ class MainActivity : ComponentActivity() {
                         .doOnNext { response ->
                             weatherViewModel.cacheForecast(response)
                                 .subscribeOn(Schedulers.io())
-                                .subscribe()
+                                .subscribe({}, { Log.e(TAG, "Error caching forecast", it) })
                         }
                         .map { response -> Triple(response, intro, location) }
                 }
@@ -494,12 +496,12 @@ fun RainPredictionBottomSheet(
     val analysis = remember(sensorDataList) {
         if (sensorDataList.isNotEmpty()) {
             val current = sensorDataList.last()
-            val lastRecordDate = current.date.substring(0, 10)
+            val lastRecordDate = current.date.take(10)
             val relevantData = sensorDataList.filter { it.date.startsWith(lastRecordDate) }
             
             val pressureTrends = calculatePressureTrends(relevantData)
-            val dewPoint = calculateDewPoint(current.temperature, current.humidity)
-            val prediction = predictRain(current.temperature, dewPoint)
+            val dewPoint = DewPointCalculator.calculate(current.temperature, current.humidity).toFloat()
+            val prediction = RainAnalysisEngine.predict(current.temperature, dewPoint)
             
             RainAnalysis(
                 prediction = prediction,
@@ -742,10 +744,7 @@ data class RainAnalysis(
 )
 
 private fun calculateDewPoint(temp: Float, humidity: Float): Float {
-    val a = 17.625f
-    val b = 243.04f
-    val alpha = (Math.log(humidity.toDouble() / 100.0) + (a * temp) / (b + temp)).toFloat()
-    return (b * alpha) / (a - alpha)
+    return DewPointCalculator.calculate(temp, humidity).toFloat()
 }
 
 private fun calculatePressureTrends(sensorData: List<SensorData>): FloatArray {
@@ -767,11 +766,5 @@ private fun calculatePressureTrends(sensorData: List<SensorData>): FloatArray {
 }
 
 private fun predictRain(temp: Float, dewPoint: Float): String {
-    val spread = temp - dewPoint
-    return when {
-        spread < 4 -> "Heavy Rain currently or Rain is Imminent"
-        spread < 5.5 -> "Rain, Light or Normal is expected soon / currently raining"
-        spread < 10 -> "Unlikely To Rain"
-        else -> "Very Dry - No Rain"
-    }
+    return RainAnalysisEngine.predict(temp, dewPoint)
 }

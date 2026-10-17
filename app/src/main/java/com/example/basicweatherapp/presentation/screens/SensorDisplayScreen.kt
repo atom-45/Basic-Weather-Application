@@ -33,6 +33,8 @@ import com.example.basicweatherapp.data.models.PredictionVerification
 import com.example.basicweatherapp.data.models.SensorData
 import com.example.basicweatherapp.data.models.ThermodynamicPrediction
 import com.example.basicweatherapp.physics.StormReport
+import androidx.compose.animation.*
+import com.example.basicweatherapp.services.WeatherBLEService
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import com.example.basicweatherapp.presentation.theme.BasicWeatherAppTheme
 import com.example.basicweatherapp.presentation.theme.Muli
@@ -71,8 +73,34 @@ fun SensorDisplayScreen(
     var selectedDataType by remember { mutableStateOf("Temperature") }
     var selectedPeriod by remember { mutableStateOf("10 minutes") }
     var chartData by remember { mutableStateOf<LineData?>(null) }
+    var isSyncing by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
+
+    DisposableEffect(context) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(ctx: android.content.Context?, intent: android.content.Intent?) {
+                when (intent?.action) {
+                    WeatherBLEService.ACTION_SYNC_STARTED -> isSyncing = true
+                    WeatherBLEService.ACTION_SYNC_COMPLETED -> isSyncing = false
+                }
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(WeatherBLEService.ACTION_SYNC_STARTED)
+            addAction(WeatherBLEService.ACTION_SYNC_COMPLETED)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose {
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {}
+        }
+    }
 
     // Auto-update graph when new data arrives or selections change
     LaunchedEffect(sensorDataList, selectedDataType, selectedPeriod) {
@@ -83,6 +111,7 @@ fun SensorDisplayScreen(
 
     SensorDisplayContent(
         sensorDataList = sensorDataList,
+        isSyncing = isSyncing,
         stormReport = stormReport,
         unverifiedPredictions = unverifiedPredictions,
         selectedDataType = selectedDataType,
@@ -102,7 +131,7 @@ fun SensorDisplayScreen(
                 sensorDataViewModel.insertVerification(verification)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe()
+                    .subscribe({}, { android.util.Log.e("SensorDisplay", "Error inserting verification", it) })
             )
             val now = System.currentTimeMillis()
             val tolerance = 15 * 60 * 1000L
@@ -113,7 +142,7 @@ fun SensorDisplayScreen(
                     sensorDataViewModel.verifyPrediction(matchingPred, verification.actualOutcome)
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe()
+                        .subscribe({}, { android.util.Log.e("SensorDisplay", "Error verifying prediction", it) })
                 )
             }
         },
@@ -122,7 +151,7 @@ fun SensorDisplayScreen(
                 sensorDataViewModel.verifyPrediction(prediction, outcome)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe()
+                    .subscribe({}, { android.util.Log.e("SensorDisplay", "Error verifying prediction audit", it) })
             )
         }
     )
@@ -132,6 +161,7 @@ fun SensorDisplayScreen(
 @Composable
 fun SensorDisplayContent(
     sensorDataList: List<SensorData>,
+    isSyncing: Boolean = false,
     stormReport: StormReport?,
     unverifiedPredictions: List<ThermodynamicPrediction>,
     selectedDataType: String,
@@ -170,6 +200,44 @@ fun SensorDisplayContent(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(20.dp))
+
+            AnimatedVisibility(
+                visible = isSyncing,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.95f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = colorResource(id = R.color.orange)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Syncing sensor history...",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = Muli,
+                                color = Color.Black
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colorResource(id = R.color.orange),
+                            trackColor = Color.LightGray.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
 
             // Header Row
             Row(
@@ -640,7 +708,9 @@ fun AuditCard(
     prediction: ThermodynamicPrediction,
     onVerify: (ThermodynamicPrediction, String) -> Unit
 ) {
+    val context = LocalContext.current
     var feedbackSubmitted by remember { mutableStateOf(false) }
+    var selectedOutcome by remember { mutableStateOf<String?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -669,7 +739,7 @@ fun AuditCard(
             Spacer(modifier = Modifier.height(12.dp))
             
             Text(
-                text = if (feedbackSubmitted) "Audit complete. Energy model calibrated." 
+                text = if (feedbackSubmitted) "Audit complete ($selectedOutcome). Energy model calibrated." 
                        else "At ${prediction.originalTimestamp.substring(5, 16).replace("T", " ")}, physics predicted arrival at ${prediction.predictedArrival}. What is the actual status?",
                 color = Color.White.copy(alpha = 0.9f),
                 fontSize = 14.sp,
@@ -684,7 +754,9 @@ fun AuditCard(
                         AssistChip(
                             onClick = {
                                 onVerify(prediction, outcome)
+                                selectedOutcome = outcome
                                 feedbackSubmitted = true
+                                Toast.makeText(context, "Audit Submitted: $outcome", Toast.LENGTH_SHORT).show()
                             },
                             label = { Text(outcome, fontSize = 11.sp, color = Color.White) },
                             colors = AssistChipDefaults.assistChipColors(containerColor = Color.White.copy(alpha = 0.1f))
@@ -704,6 +776,7 @@ fun ThermoFeedbackChip(
     onVerify: (PredictionVerification) -> Unit,
     onSuccess: () -> Unit
 ) {
+    val context = LocalContext.current
     AssistChip(
         onClick = {
             if (lastData != null) {
@@ -718,6 +791,7 @@ fun ThermoFeedbackChip(
                     "THERMODYNAMIC_DE"
                 )
                 onVerify(verification)
+                Toast.makeText(context, "Verification Submitted: $outcome", Toast.LENGTH_SHORT).show()
                 onSuccess()
             }
         },

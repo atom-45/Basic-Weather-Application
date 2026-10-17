@@ -24,7 +24,7 @@ import com.example.basicweatherapp.data.models.SensorData;
 import com.example.basicweatherapp.data.models.ThermodynamicPrediction;
 import com.example.basicweatherapp.data.models.User;
 
-@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class, ThermodynamicPrediction.class}, version = 8, exportSchema = false)
+@Database(entities = {User.class, Location.class, Place.class, SensorData.class, CachedForecast.class, PredictionVerification.class, ThermodynamicPrediction.class}, version = 9, exportSchema = false)
 public abstract class WeatherDatabase extends RoomDatabase {
     private static volatile WeatherDatabase instance;
 
@@ -37,7 +37,8 @@ public abstract class WeatherDatabase extends RoomDatabase {
                if(instance==null){
                    instance = Room.databaseBuilder(context,WeatherDatabase.class,
                            "weather_database")
-                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                           .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                           .fallbackToDestructiveMigration()
                            .build();
                }
             }
@@ -113,6 +114,13 @@ public abstract class WeatherDatabase extends RoomDatabase {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
             db.execSQL("ALTER TABLE `thermodynamic_predictions` ADD COLUMN `notified_45m` INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
+    static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_sensor_data_date` ON `sensor_data` (`date`)");
         }
     };
 

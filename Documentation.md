@@ -1,90 +1,171 @@
 # Project Documentation: Basic Weather App
 
 ## Overview
-The Basic Weather App is a comprehensive weather monitoring solution that integrates global weather forecasts with local sensor data via Bluetooth Low Energy (BLE). The application has been fully migrated from a legacy Fragment-based XML architecture to a modern **Jetpack Compose** implementation with a **Single Activity** design.
+The Basic Weather App is a comprehensive weather monitoring and atmospheric analysis solution that integrates global weather forecasts from WeatherAPI.com with local sensor telemetry and offline circular buffer backfilling via Bluetooth Low Energy (BLE). The application uses a **Single Activity** architecture with **Jetpack Compose** and **Room Database**.
 
-## Architecture
+---
 
-### UI Layer (Jetpack Compose)
-- **Single Activity Architecture:** `MainActivity.kt` serves as the entry point and host for the navigation graph.
-- **Reactive Lifecycle Management:** Utilizes `subscribeAsState()` for leak-proof RxJava integration, tying data streams directly to Composable lifecycles.
-- **Navigation:** Uses `androidx.navigation.compose` for seamless transitions between the dashboard and detailed sensor views.
-- **Theme:** A custom "Glassmorphism" theme (`presentation/theme/`) utilizing semi-transparent surfaces, dynamic gradients, and the Muli font.
+## System Architecture
 
-### ViewModel & State Management
-- **MVVM Pattern:** ViewModels manage UI state and interact with repositories.
-- **Physics Package Integration:** ViewModels utilize a dedicated `physics` package to perform atmospheric energy balance calculations.
-- **Dagger 2:** Handles dependency injection for ViewModels and Repositories.
+```
++-----------------------------------------------------------------------------------+
+|                                  UI Layer                                         |
+|                                                                                   |
+|   MainActivity.kt  <--->  MainScreen.kt  <--->  SensorDisplayScreen.kt            |
+|        |                                              |                           |
+|        v                                              v                           |
+|  RainPredictionBottomSheet                 Sync Progress Banner (Compose)         |
++-----------------------------------------------------------------------------------+
+                                        |
+                                        v
++-----------------------------------------------------------------------------------+
+|                             ViewModel & State Layer                               |
+|                                                                                   |
+|   WeatherViewModel     UserViewModel     PlaceViewModel     SensorDataViewModel   |
+|         |                     |                |                      |           |
+|         v                     v                v                      v           |
+|  Retrofit (API)         Room DAO          Room DAO            Physics Engine      |
++-----------------------------------------------------------------------------------+
+                                        |
+                                        v
++-----------------------------------------------------------------------------------+
+|                              BLE & Service Layer                                  |
+|                                                                                   |
+|                         WeatherBLEService.java                                    |
+|   - Foreground Service Notification with Progress Indicator                       |
+|   - 2-Stage Handshake Protocol (0x01 SYNC / 0x02 ACK)                            |
+|   - Sequential CCCD Notification Chaining (0x2902)                                |
+|   - Relative Tick Back-Projection & Local Timezone Conversion                     |
+|   - Broadcast Actions (ACTION_SYNC_STARTED / ACTION_SYNC_COMPLETED)               |
++-----------------------------------------------------------------------------------+
+                                        |
+                                        v
++-----------------------------------------------------------------------------------+
+|                              Database Layer (Room)                                |
+|                                                                                   |
+|   WeatherDatabase (Version 9)                                                     |
+|   - users, locations, places, sensor_data, cached_forecast,                       |
+|     prediction_verifications, thermodynamic_predictions                           |
++-----------------------------------------------------------------------------------+
+```
 
-### Data Layer
-- **Local Persistence (Room - Version 8):** Stores user profiles, saved locations, sensor data history, cached weather forecasts, real-time verification logs, and the comprehensive **Thermodynamic Black Box** prediction history.
-  - **Migration 6 to 7 (`MIGRATION_6_7`):** Added `verified_timestamp` column to record the exact human verification timestamp ($T_{\text{verify}}$) for phase error calculations.
-  - **Migration 7 to 8 (`MIGRATION_7_8`):** Added `notified_45m` column (`INTEGER NOT NULL DEFAULT 0`) to track one-time background 45-minute countdown alert dispatches.
-- **Remote API (Retrofit):** Fetches global weather data from WeatherAPI.com.
-- **BLE Service:** `WeatherBLEService` handles real-time data acquisition, **Background Atmospheric Analysis**, periodic 45-minute countdown monitoring, and high-priority heads-up notifications.
+---
 
-### Thermodynamic Analysis Engine (physics/)
-- **Theoretical Basis:** Implements the First Law of Thermodynamics ($dT/dt = \frac{1}{\rho c_p} \frac{dp}{dt} + \frac{J}{c_p}$) to analyze local air parcels.
-- **Numerical Methods:** Uses **Backward Difference** for derivative calculations ($dp/dt$, $dT/dt$) and **Forward Euler** for rain arrival time extrapolation.
-- **Dynamic Density:** Calculates air density ($\rho$) in real time using Virtual Temperature correction for relative humidity.
-- **Black Box Audit System:** Automatically records the engine's prediction snapshots alongside exact sensor parameters.
-- **Merged Hybrid Verification Model:**
-  - **Targeted Arrival-Window Back-Propagation:** When a user verifies a Live Audit card, back-propagation updates pending predictions matching the specific target arrival window with a **5-minute tolerance window** ($\pm 5\text{ mins}$ around native 10-minute window = 20-minute total span).
-  - **Isolation of Long-Horizon Forecasts:** Long-horizon forecasts (3–4+ hours out) are completely isolated and remain `PENDING` until their specific target arrival window arrives.
-  - **Immutability Protection:** Once a prediction snapshot is marked `VERIFIED` (`verification_status = 'VERIFIED'`), it can NEVER be overwritten or re-verified by subsequent audits.
-  - **Phase Error Tracking ($\Delta t$):** Captures `$T_{\text{verify}}$` (ISO timestamp when user tapped verification) alongside `$T_{\text{predicted\_arrival}}$`, allowing exact phase error ($\Delta t = T_{\text{verify}} - T_{\text{predicted}}$) computation in exported datasets.
-  - **Human Catchment Window:** Accommodates 10-minute BLE sensor update cycles and real-world human response times without requiring exact-second button presses.
-- **Core Components:**
-    - `DensityCalculator`: Dynamic $\rho$ calculation with virtual temperature correction.
-    - `StormThermodynamicsEngine`: Solves the DE to detect atmospheric energy anomalies (residuals).
-    - `RainAnalysisEngine`: Centralized logic for static dew-point-based saturation thresholds.
-    - `DewPointCalculator`: Magnus-Tetens approximation for saturation thresholds.
+## Database Schema & Migrations (Room Version 9)
 
-## Background Notification Systems (`WeatherBLEService.java`)
+Database: `WeatherDatabase.java` (`version = 9`, `exportSchema = false`)
 
-The background service implements a multi-stage alert pipeline using high-priority heads-up notification channels (`WeatherAlertChannel`):
+### Entities
+1.  **`users`**: `userID` (PK), `name_and_surname`.
+2.  **`locations`**: `locationID` (PK), `name`, `region`, `country`, `lat`, `lon`, `localtime`, `tz_id`.
+3.  **`places`**: `placeID` (PK), `name`, `region`, `country`, `lat`, `lon`, `url`.
+4.  **`sensor_data`**: `id` (PK), `date` (Unique Index), `humidity`, `temperature`, `pressure`, `altitude`.
+5.  **`cached_forecast`**: `id` (PK, default `"last_forecast"`), `json_data`.
+6.  **`prediction_verifications`**: `id` (PK), `timestamp`, `temperature`, `humidity`, `pressure`, `prediction`, `actual_outcome`, `residual`, `source`.
+7.  **`thermodynamic_predictions`**: `id` (PK), `original_timestamp`, `temp_snapshot`, `humidity_snapshot`, `pressure_snapshot`, `predicted_arrival`, `storm_speed`, `residual`, `window_start_millis`, `window_end_millis`, `verification_status`, `storm_event_id`, `actual_outcome`, `verified_timestamp`, `notified_45m`.
 
-1. **Long-Horizon Scheduled 45-Minute Countdown Alert**:
-   - Continuously monitors pending predictions in Room (`getPredictionsNeeding45mAlert`).
-   - When a forecast created hours in advance reaches **45 minutes before its target arrival time** ($T_{\text{now}} \ge T_{\text{arrival}} - 45\text{m}$), the service fires a high-priority heads-up alert:
-     * **Title**: `"Thermodynamic Alert: Upcoming Storm"`
-     * **Content**: `"Storm predicted at 19:45 is expected in ~45 minutes. Prepare for rain."`
-   - Sets `notified_45m = 1` to guarantee the 45-minute countdown alert fires **exactly once** per forecast.
+### Migration History
+*   **`MIGRATION_1_2`**: Created `sensor_data` table.
+*   **`MIGRATION_2_3`**: Created `cached_forecast` table.
+*   **`MIGRATION_3_4`**: Created `prediction_verifications` table.
+*   **`MIGRATION_4_5`**: Added `residual` and `source` columns to `prediction_verifications`.
+*   **`MIGRATION_5_6`**: Created `thermodynamic_predictions` table.
+*   **`MIGRATION_6_7`**: Added `verified_timestamp` column to `thermodynamic_predictions`.
+*   **`MIGRATION_7_8`**: Added `notified_45m` column (`INTEGER NOT NULL DEFAULT 0`) to `thermodynamic_predictions`.
+*   **`MIGRATION_8_9`**: Added unique index `index_sensor_data_date` on `sensor_data(date)`.
+*   **Fallback**: Configured `.fallbackToDestructiveMigration()` as safety fallback.
 
-2. **Imminent Sensor Reading Alert**:
-   - Fires during live BLE sensor processing if current atmospheric analysis detects rain arriving within 45 minutes or an immediate unstable energy shift ($dT/dt$ residual anomaly or rapid pressure drop $> 1\text{ hPa/hr}$).
+---
 
-3. **Notification Banner De-duplication**:
-   - All alerts share `ALERT_NOTIFICATION_ID = 204` on `WeatherAlertChannel`, smoothly updating the existing heads-up banner on Android instead of cluttering the status bar with duplicate cards.
+## BLE Protocol & Offline History Sync (`WeatherBLEService.java`)
 
-## Core Screens
+### 1. Arduino 20-Byte Payload Layout (Little Endian)
+The Arduino RP2040 packs sensor telemetry into a 20-byte array:
+*   **Bytes 0–3**: `uint32_t sampleMillis` (relative timer ticks in millis)
+*   **Bytes 4–7**: `float humidity` (%)
+*   **Bytes 8–11**: `float temperature` (°C)
+*   **Bytes 12–15**: `float pressure` (hPa)
+*   **Bytes 16–19**: `float altitude` (m)
 
-### 1. Main Dashboard (`MainScreen.kt`)
-- **Integrated Search:** A `DockedSearchBar` featuring a lifecycle-aware `LaunchedEffect` for reactive, disposable-free location searching.
-- **User Welcome Tile:** Personalized greeting with inline editing and persistence.
-- **Bento Weather Grid:** Modern layout for primary weather conditions and astronomical data.
+`parseHistoricalRecord()` and `getArraySensorData()` unpack all 5 metrics at exact byte offsets using `ByteBuffer.order(ByteOrder.LITTLE_ENDIAN)`.
 
-### 2. Sensor Display Screen (`SensorDisplayScreen.kt`)
-- **Bento Grid:** Displays real-time Temperature, Humidity, Pressure, and Altitude from the BLE sensor.
-- **Thermodynamic Analysis Section:** Displays storm approach speed, exact arrival timestamps, and safety verdicts.
-- **Live Model Audit Card:** A dynamic component that appears strictly during a prediction's active arrival window ($T_{\text{now}} \in [\text{windowStart}, \text{windowEnd}]$) to request ground-truth verification.
-- **De-duplicated Safety Verification Row:** 
-  - The secondary "Verify this Thermodynamic Analysis" card is filtered to only appear for imminent events ($\le 30$ mins) AND when no active Live Model Audit Card is displaying (`activePrediction == null`), eliminating double prompts and premature distant forecast feedback.
-- **Interactive Trends:** MPAndroidChart auto-updates with new sensor data. Supports historical data viewing up to 5 hours.
+### 2. Sequential CCCD Notification Enablement
+To avoid Android BLE GATT operation collisions, notification enabling is chained sequentially:
+1.  In `onServicesDiscovered()`, notifications are enabled for `liveChar` (`RP2040_CHARACTERISTICS_UUID`).
+2.  `setCharacteristicNotification()` writes `ENABLE_NOTIFICATION_VALUE` (`0x0001`) to descriptor `0x2902`.
+3.  When `onDescriptorWrite()` confirms success for `liveChar`, it triggers notification enablement for `historyChar` (`RP2040_HISTORY_CHARACTERISTIC_UUID`).
+4.  Once `onDescriptorWrite()` confirms success for `historyChar`, `checkAndTriggerHistoricalSync()` executes.
 
-### 3. Dataset Export & WorkManager (`ExportWorker.kt`)
-- Generates a compressed ZIP file (`weather_export_<date>.zip`) saved to the device `Downloads` directory containing three CSV datasets for offline research and Python model calibration:
-  1. `thermodynamic_blackbox.csv`: Contains `Timestamp`, `Temp`, `Humidity`, `Pressure`, `PredictedArrival`, `VerifiedTimestamp`, `Speed`, `Residual`, `EventID`, `Status`, `ActualOutcome`.
-  2. `labeled_verifications.csv`: Contains real-time Tier 1 ground-truth feedback logs.
-  3. `raw_sensor_data.csv`: High-frequency sensor telemetry history.
+### 3. Handshake Protocol (`0x01` SYNC / `0x02` ACK)
+1.  **Sync Request (`0x01`)**: App writes `0x01` to `syncControlChar` via `WRITE_TYPE_NO_RESPONSE`. App broadcasts `ACTION_SYNC_STARTED` and updates foreground notification to *"Syncing Sensor History - Downloading offline readings..."* with a progress bar.
+2.  **Stream & Accumulation**: Arduino dumps its 144-record circular buffer over `historyChar`. App collects packets in `historyAccumulator`.
+3.  **Relative Tick Back-Projection & Local Timezone Conversion**:
+    - Calculates `maxTick = max(r.sampleMillis())` across the batch.
+    - Calculates `deltaMillis = maxTick - record.sampleMillis()`.
+    - Calculates `sampleUtcMillis = phoneUtcMillis - deltaMillis`.
+    - Converts `sampleUtcMillis` to **Local Timezone** (`ZoneId.systemDefault()`) preserving millisecond precision:
+      ```java
+      String isoDate = LocalDateTime.ofInstant(
+          Instant.ofEpochMilli(sampleUtcMillis),
+          ZoneId.systemDefault()
+      ).toString();
+      ```
+4.  **Chronological Sorting & Batch Insertion**:
+    - Sorts `batchToInsert` in strict ascending chronological order (`oldest -> newest`).
+    - Backfills all new records into Room DB in a single `insertAll()` transaction.
+5.  **ACK (`0x02`)**: App transmits `0x02` ACK to Arduino via `WRITE_TYPE_NO_RESPONSE`, broadcasts `ACTION_SYNC_COMPLETED`, and restores the foreground notification to *"Receiving live data..."*. Arduino receives `0x02` and resets `totalStored = 0; head = 0;`.
 
-## Security & Configuration
-- **API Key Handling:** The WeatherAPI key is stored in `local.properties` and accessed via `BuildConfig`.
-- **Permissions:** Dynamically handles Bluetooth (Scan/Connect) and Notification permissions (required for WorkManager feedback and BLE alerts on API 33+).
-- **Offline Mode:** The app automatically caches the last successful weather fetch in the Room database.
+---
 
-## Build Requirements
-- **Android Studio:** Ladybug / Quail or newer recommended.
-- **Min SDK:** 26 (Android 8.0).
-- **Target SDK:** 34.
-- **Compose BOM:** 2025.02.00 (Stable).
+## Thermodynamic Physics Engine (`physics/`)
+
+### Core Formula
+Solves the First Law of Thermodynamics for open air parcels:
+$$\frac{dT}{dt} = \frac{1}{\rho c_p} \frac{dp}{dt} + \frac{J}{c_p}$$
+
+### Components
+1.  **`DensityCalculator`**: Computes air density $\rho$ in real time using Virtual Temperature correction ($T_v = T \cdot (1 + 0.378 \cdot e/p)$) for relative humidity.
+2.  **`DewPointCalculator`**: Calculates saturation threshold using Magnus-Tetens approximation ($a = 17.27, b = 237.7$).
+3.  **`RainAnalysisEngine`**: Centralized thresholding for temperature-dewpoint spread ($T - T_d$):
+    *   $\text{Spread} < 4.0^\circ\text{C}$: Heavy Rain Imminent / Currently Raining.
+    *   $\text{Spread} < 5.5^\circ\text{C}$: Rain Expected Soon.
+    *   $\text{Spread} < 10.0^\circ\text{C}$: Unlikely To Rain.
+    *   $\text{Else}$: Very Dry - No Rain.
+4.  **`StormThermodynamicsEngine`**:
+    *   Calculates numerical derivatives using exact timestamp deltas:
+        $$dt = \text{ChronoUnit.SECONDS.between}(t_1, t_2)$$
+    *   Calculates Thermodynamic Residual ($\text{residual} = \text{dT/dt}_{\text{actual}} - \text{dT/dt}_{\text{theoretical}}$).
+    *   Computes storm speed and projects rain arrival timestamps via Forward Euler extrapolation to the Dew Point.
+
+---
+
+## UI Components & Sync Indicators
+
+### 1. Sensor Display Screen (`SensorDisplayScreen.kt`)
+*   **Bento Grid**: Real-time display for Temperature, Humidity, Pressure, and Altitude.
+*   **Sync Progress Banner**: Animated `AnimatedVisibility` surface containing `CircularProgressIndicator` and `LinearProgressIndicator` (*"Syncing sensor history..."*) displayed dynamically during BLE history transfer.
+*   **Interactive MPAndroidChart**: Dynamically renders trend lines for Temperature, Humidity, or Pressure over 10m to 300m time windows.
+*   **Live Model Audit Card**: Prompts for user verification during a prediction's active arrival window.
+
+### 2. Main Dashboard (`MainScreen.kt`)
+*   **Search Bar**: Docked search with swipe-to-delete location history.
+*   **Weather Grid**: Global forecast metrics from Retrofit 2.
+*   **Offline Indicator**: Subtle banner displayed when operating on cached data.
+
+### 3. Rain Prediction Bottom Sheet (`MainActivity.kt`)
+*   **Unified Saturation Analysis**: Utilizes `DewPointCalculator` and `RainAnalysisEngine` for real-time spread analysis and user feedback submission.
+
+---
+
+## Dataset Exporting (`ExportWorker.kt`)
+
+Powered by **Android WorkManager**. Generates a ZIP file in `Downloads` containing:
+1.  `thermodynamic_blackbox.csv`: Prediction snapshots, residual values, arrival windows, verification statuses, and phase errors ($\Delta t$).
+2.  `labeled_verifications.csv`: Tier 1 real-time user feedback entries.
+3.  `raw_sensor_data.csv`: High-frequency sensor telemetry log.
+
+---
+
+## Build & Test Commands
+*   **Build Assembly**: `./gradlew :app:assembleDebug`
+*   **Unit Tests**: `./gradlew :app:testDebugUnitTest`

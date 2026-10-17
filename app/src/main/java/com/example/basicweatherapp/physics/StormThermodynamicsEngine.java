@@ -1,7 +1,9 @@
 package com.example.basicweatherapp.physics;
 
 import com.example.basicweatherapp.data.models.SensorData;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -15,6 +17,19 @@ import java.util.Locale;
  */
 public final class StormThermodynamicsEngine {
     private StormThermodynamicsEngine() {}
+
+    public static LocalDateTime parseLocalDateTime(String dateStr) {
+        if (dateStr == null || dateStr.isEmpty()) return null;
+        try {
+            return LocalDateTime.parse(dateStr);
+        } catch (DateTimeParseException e) {
+            try {
+                return Instant.parse(dateStr).atZone(ZoneId.systemDefault()).toLocalDateTime();
+            } catch (DateTimeParseException e2) {
+                return null;
+            }
+        }
+    }
 
     /**
      * Performs a thermodynamic analysis based on two consecutive sensor readings.
@@ -31,8 +46,11 @@ public final class StormThermodynamicsEngine {
 
         try {
             // 1. Time Difference (dt) - Handles irregular intervals and resets
-            LocalDateTime t1 = LocalDateTime.parse(prev.getDate());
-            LocalDateTime t2 = LocalDateTime.parse(current.getDate());
+            LocalDateTime t1 = parseLocalDateTime(prev.getDate());
+            LocalDateTime t2 = parseLocalDateTime(current.getDate());
+            if (t1 == null || t2 == null) {
+                return new StormReport(0, -1, "N/A", 0, true, "Timestamp Error");
+            }
             double dtSeconds = ChronoUnit.SECONDS.between(t1, t2);
 
             if (dtSeconds <= 0) {

@@ -189,7 +189,7 @@ fun MainScreen(
                                                 compositeDisposable.add(
                                                     placeViewModel.deletePlace(place)
                                                         .subscribeOn(Schedulers.io())
-                                                        .subscribe()
+                                                        .subscribe({}, { android.util.Log.e("MainScreen", "Error deleting place", it) })
                                                 )
                                                 true
                                             } else false
@@ -221,7 +221,7 @@ fun MainScreen(
                                         compositeDisposable.add(
                                             placeViewModel.addPlace(place)
                                                 .subscribeOn(Schedulers.io())
-                                                .subscribe()
+                                                .subscribe({}, { android.util.Log.e("MainScreen", "Error adding place", it) })
                                         )
                                     }
                                 }

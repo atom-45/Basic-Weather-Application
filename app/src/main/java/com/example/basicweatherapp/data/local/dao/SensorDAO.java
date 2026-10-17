@@ -16,7 +16,7 @@ import io.reactivex.rxjava3.core.Observable;
 public interface SensorDAO {
 
 
-    @Query("SELECT * FROM sensor_data")
+    @Query("SELECT * FROM sensor_data ORDER BY date ASC")
     Observable<List<SensorData>> getAllSensorData();
 
     @Query("SELECT * FROM sensor_data WHERE date >= :startDate AND date <= :endDate ORDER BY date ASC")
@@ -25,6 +25,12 @@ public interface SensorDAO {
     @Query("SELECT * FROM sensor_data ORDER BY id DESC LIMIT 2")
     Observable<List<SensorData>> getLastTwoEntries();
 
-    @Insert(onConflict = OnConflictStrategy.NONE)
+    @Query("SELECT * FROM sensor_data ORDER BY id DESC LIMIT 1")
+    List<SensorData> getLatestSensorData();
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     Completable insertSensorData(SensorData sensorData);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    Completable insertAll(List<SensorData> sensorDataList);
 }

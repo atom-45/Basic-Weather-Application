@@ -85,6 +85,10 @@ public class SensorDataViewModel extends ViewModel {
         return sensorDataRepository.insertSensorData(sensorData);
     }
 
+    public Completable insertHistoricalData(List<SensorData> sensorDataList) {
+        return sensorDataRepository.insertAll(sensorDataList);
+    }
+
     public Completable insertVerification(PredictionVerification verification) {
         return predictionVerificationRepository.insert(verification);
     }

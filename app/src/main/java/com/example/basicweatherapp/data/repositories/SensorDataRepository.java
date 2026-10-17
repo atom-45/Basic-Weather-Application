@@ -40,12 +40,21 @@ public class SensorDataRepository {
         return sensorDAO.getLastTwoEntries();
     }
 
+    public List<SensorData> getLatestSensorData() {
+        return sensorDAO.getLatestSensorData();
+    }
+
     public Completable insertSensorData(SensorData sensorData){
         return sensorDAO.insertSensorData(sensorData);
     }
 
     public Completable insert(SensorData sensorData){
         return sensorDAO.insertSensorData(sensorData)
+                .subscribeOn(Schedulers.io());
+    }
+
+    public Completable insertAll(List<SensorData> sensorDataList) {
+        return sensorDAO.insertAll(sensorDataList)
                 .subscribeOn(Schedulers.io());
     }
 }
